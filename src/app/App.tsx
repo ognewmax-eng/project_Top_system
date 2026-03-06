@@ -37,7 +37,7 @@ export default function App() {
       id: `app_${Date.now()}`,
       status: "review",
       benefits: data.benefits ? JSON.parse(data.benefits) : [],
-      createdAt: new Date().toLocaleDateString("ru-RU"),
+      createdAt: new Date().toISOString(),
     };
     apps.push(newApp);
     localStorage.setItem("top_applications", JSON.stringify(apps));

@@ -28,6 +28,22 @@ const statusLabels: Record<string, { label: string; color: string; text: string 
   rejected: { label: "ОТКЛОНЕНО",   color: "#DC2626", text: "#fff" },
 };
 
+function formatCreatedAt(createdAt: string): string {
+  if (!createdAt) return "—";
+  if (createdAt.includes("T")) {
+    const d = new Date(createdAt);
+    return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  const match = createdAt.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    const d = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  const d = new Date(createdAt);
+  return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
 function getApplications(): Application[] {
   const raw = localStorage.getItem("top_applications");
   return raw ? JSON.parse(raw) : [];
@@ -61,7 +77,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
-  const updateStatus = (id: string, status: "approved" | "rejected") => {
+  const updateStatus = (id: string, status: "review" | "approved" | "rejected") => {
     const updated = apps.map((a) => (a.id === id ? { ...a, status } : a));
     setApps(updated);
     saveApplications(updated);
@@ -386,7 +402,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                       {/* Date */}
                       <div style={{ fontSize: 11, color: "#aaa", fontWeight: 700, flexShrink: 0 }}>
-                        {app.createdAt}
+                        {formatCreatedAt(app.createdAt)}
                       </div>
 
                       {/* Status badge */}
@@ -497,7 +513,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         )}
                         {app.status !== "review" && (
                           <button
-                            onClick={(e) => { e.stopPropagation(); updateStatus(app.id, "review" as "approved"); }}
+                            onClick={(e) => { e.stopPropagation(); updateStatus(app.id, "review"); }}
                             style={{
                               padding: "8px 20px",
                               border: "2px solid #999",

@@ -1,0 +1,15 @@
+# Запрет выполнения скриптов в папке загрузок (безопасность)
+# Разрешаем только отдачу статических файлов
+
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$">
+    Require all denied
+</FilesMatch>
+
+# Опционально: запретить выполнение любых скриптов по умолчанию
+Options -ExecCGI
+RemoveHandler .php .php3 .php4 .php5 .phtml .pl .py .jsp .asp .sh .cgi
+
+# Только отдача файлов как статики (без выполнения)
+<IfModule mod_headers.c>
+    Header set Content-Disposition "inline"
+</IfModule>

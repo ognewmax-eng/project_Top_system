@@ -1,4 +1,5 @@
 import React, { useState, useRef } from "react";
+import { saveApplication, uploadFiles } from "@/api/apiService";
 
 interface RegistrationFormProps {
   onSuccess: (userData: Record<string, string>) => void;
@@ -29,9 +30,12 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   });
   const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
-  const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  /** Список выбранных файлов для загрузки на сервер */
+  const [fileList, setFileList] = useState<File[]>([]);
   const [agreed, setAgreed] = useState(false);
   const [passwordError, setPasswordError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -52,14 +56,14 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const files = Array.from(e.dataTransfer.files).map((f) => f.name);
-    setUploadedFiles((prev) => [...prev, ...files]);
+    const files = Array.from(e.dataTransfer.files);
+    setFileList((prev) => [...prev, ...files]);
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const files = Array.from(e.target.files).map((f) => f.name);
-      setUploadedFiles((prev) => [...prev, ...files]);
+      const files = Array.from(e.target.files);
+      setFileList((prev) => [...prev, ...files]);
     }
   };
 
@@ -297,7 +301,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                 />
               </div>
 
-              {passwordError && (
+              {(passwordError || submitError) && (
                 <div
                   style={{
                     gridColumn: "1 / -1",
@@ -309,7 +313,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                     color: "#DC2626",
                   }}
                 >
-                  ⚠ {passwordError}
+                  ⚠ {passwordError || submitError}
                 </div>
               )}
             </div>
@@ -475,9 +479,9 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                 />
               </div>
 
-              {uploadedFiles.length > 0 && (
+              {fileList.length > 0 && (
                 <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
-                  {uploadedFiles.map((file, i) => (
+                  {fileList.map((file, i) => (
                     <div
                       key={i}
                       style={{
@@ -490,7 +494,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                       }}
                     >
                       <span style={{ fontSize: 16 }}>✅</span>
-                      <span style={{ fontSize: 14, fontWeight: 700 }}>{file}</span>
+                      <span style={{ fontSize: 14, fontWeight: 700 }}>{file.name}</span>
                     </div>
                   ))}
                 </div>
@@ -534,8 +538,10 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
               </div>
 
               <button
-                onClick={() => {
+                onClick={async () => {
                   if (!agreed) return;
+                  setPasswordError("");
+                  setSubmitError("");
                   if (form.password.length < 6) {
                     setPasswordError("Пароль должен содержать минимум 6 символов");
                     return;
@@ -544,34 +550,58 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                     setPasswordError("Пароли не совпадают");
                     return;
                   }
-                  onSuccess({ ...form, benefits: JSON.stringify(selectedBenefits) });
+                  setSubmitting(true);
+                  const payload = { ...form, benefits: JSON.stringify(selectedBenefits) };
+                  try {
+                    // Сначала загружаем файлы (если есть)
+                    let uploadedPaths: string[] = [];
+                    if (fileList.length > 0) {
+                      const uploadRes = await uploadFiles(fileList);
+                      if (uploadRes.results) {
+                        uploadedPaths = uploadRes.results.filter((r) => r.saved && r.path).map((r) => r.path!);
+                      }
+                    }
+                    // Отправляем анкету на сервер (с путями файлов в payload при необходимости)
+                    await saveApplication({
+                      ...payload,
+                      attachments: JSON.stringify(uploadedPaths),
+                    });
+                    onSuccess({ ...payload, attachments: JSON.stringify(uploadedPaths) });
+                  } catch (err) {
+                    const message = err instanceof Error ? err.message : "Ошибка отправки. Проверьте сеть или попробуйте позже.";
+                    setSubmitError(message);
+                    // Не вызываем onSuccess при ошибке — модалка успеха только при успешной отправке на сервер
+                  } finally {
+                    setSubmitting(false);
+                  }
                 }}
+                disabled={!agreed || submitting}
                 style={{
                   width: "100%",
                   padding: "20px",
                   fontSize: 18,
                   fontWeight: 900,
-                  color: agreed ? "#000" : "#999",
-                  backgroundColor: agreed ? "#ED7C30" : "#f0f0f0",
-                  border: `2px solid ${agreed ? "#000" : "#ccc"}`,
-                  boxShadow: agreed ? "5px 5px 0px #000" : "none",
-                  cursor: agreed ? "pointer" : "not-allowed",
+                  color: agreed && !submitting ? "#000" : "#999",
+                  backgroundColor: agreed && !submitting ? "#ED7C30" : "#f0f0f0",
+                  border: `2px solid ${agreed && !submitting ? "#000" : "#ccc"}`,
+                  boxShadow: agreed && !submitting ? "5px 5px 0px #000" : "none",
+                  cursor: agreed && !submitting ? "pointer" : "not-allowed",
                   letterSpacing: "1px",
                   transition: "all 0.1s",
                   fontFamily: "'Inter', sans-serif",
                 }}
                 onMouseEnter={(e) => {
-                  if (agreed) {
+                  if (agreed && !submitting) {
                     (e.currentTarget as HTMLElement).style.transform = "translate(2px,2px)";
                     (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #000";
                   }
                 }}
                 onMouseLeave={(e) => {
                   (e.currentTarget as HTMLElement).style.transform = "translate(0,0)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = agreed ? "5px 5px 0px #000" : "none";
+                  (e.currentTarget as HTMLElement).style.boxShadow = agreed && !submitting ? "5px 5px 0px #000" : "none";
                 }}
               >
-                ОТПРАВИТЬ ЗАЯВКУ
+                {submitting ? "ОТПРАВКА…" : "ОТПРАВИТЬ ЗАЯВКУ"}
               </button>
             </div>
           </div>

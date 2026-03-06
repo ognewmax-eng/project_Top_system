@@ -1,8 +1,19 @@
-import React, { useState } from "react";
+import React, { useMemo } from "react";
 
 interface PersonalCabinetProps {
   onBack: () => void;
   userData: Record<string, string> | null;
+}
+
+/** Заявка из хранилища (то же, что в панели администратора) */
+interface StoredApplication {
+  id: string;
+  fullName?: string;
+  email?: string;
+  status: "review" | "approved" | "rejected";
+  createdAt: string;
+  benefits?: string[];
+  [key: string]: unknown;
 }
 
 const statusConfig: Record<string, { label: string; color: string; textColor: string; desc: string }> = {
@@ -26,20 +37,70 @@ const statusConfig: Record<string, { label: string; color: string; textColor: st
   },
 };
 
+const benefitLabels: Record<string, string> = {
+  low_income: "МАЛОИМУЩИЕ",
+  svo: "ДЕТИ УЧАСТНИКОВ СВО",
+  orphan: "ДЕТИ-СИРОТЫ",
+  disabled: "ДЕТИ-ИНВАЛИДЫ",
+  large_family: "МНОГОДЕТНЫЕ СЕМЬИ",
+  none: "БЕЗ ЛЬГОТ",
+};
+
+/** Форматирует дату заявки для отображения. Поддерживает ISO и локальный формат DD.MM.YYYY. */
+function formatCreatedAt(createdAt: string | undefined): string {
+  if (!createdAt) return new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  if (createdAt.includes("T")) {
+    const d = new Date(createdAt);
+    return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  const match = createdAt.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+  if (match) {
+    const [, day, month, year] = match;
+    const d = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+  const fallback = new Date(createdAt);
+  return Number.isNaN(fallback.getTime()) ? createdAt : fallback.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+}
+
+function getMyApplication(userData: Record<string, string> | null): StoredApplication | null {
+  if (!userData?.email) return null;
+  const raw = localStorage.getItem("top_applications");
+  if (!raw) return null;
+  let apps: StoredApplication[];
+  try {
+    apps = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const email = String(userData.email).trim().toLowerCase();
+  const mine = apps.filter(
+    (a) => a.email && String(a.email).trim().toLowerCase() === email
+  );
+  if (mine.length === 0) return null;
+  mine.sort((a, b) => (b.id || "").localeCompare(a.id || ""));
+  return mine[0];
+}
+
 export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
-  const [currentStatus] = useState<"review" | "approved" | "rejected">("review");
+  const application = useMemo(() => getMyApplication(userData), [userData?.email]);
+
+  const currentStatus = application?.status ?? "review";
   const status = statusConfig[currentStatus];
 
-  const name = userData?.fullName || "Иванов Иван Иванович";
-  const registrationDate = new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  const name = userData?.fullName || application?.fullName || "—";
+  const registrationDate = formatCreatedAt(application?.createdAt);
 
-  const timelineSteps = [
-    { label: "Заявка создана", date: registrationDate, done: true },
-    { label: "На проверке", date: registrationDate, done: true, active: true },
-    { label: "Одобрена / Отклонена", date: "—", done: false },
-    { label: "Направление выдано", date: "—", done: false },
-    { label: "Трудоустроен", date: "—", done: false },
-  ];
+  const timelineSteps = useMemo(() => {
+    const steps = [
+      { label: "Заявка создана", date: registrationDate, done: true, active: false },
+      { label: "На проверке", date: registrationDate, done: currentStatus !== "review", active: currentStatus === "review" },
+      { label: currentStatus === "approved" ? "Одобрена" : currentStatus === "rejected" ? "Отклонена" : "Одобрена / Отклонена", date: currentStatus === "approved" || currentStatus === "rejected" ? registrationDate : "—", done: currentStatus === "approved" || currentStatus === "rejected", active: false },
+      { label: "Направление выдано", date: "—", done: false, active: false },
+      { label: "Трудоустроен", date: "—", done: false, active: false },
+    ];
+    return steps;
+  }, [currentStatus, registrationDate]);
 
   return (
     <div
@@ -155,7 +216,7 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
                 }}
               >
                 <span style={{ fontWeight: 900, fontSize: 16, color: status.textColor }}>
-                  СТАТУС ЗАЯ��КИ: {status.label}
+                  СТАТУС ЗАЯВ��КИ: {status.label}
                 </span>
               </div>
               <div style={{ padding: "20px 24px" }}>
@@ -299,10 +360,10 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
                 НОМЕР ЗАЯВКИ
               </div>
               <div style={{ fontSize: 32, fontWeight: 900, color: "#ED7C30", lineHeight: 1, marginBottom: 4 }}>
-                #2025-4821
+                {application?.id ? `#${application.id.replace(/^app_/, "")}` : "—"}
               </div>
               <div style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
-                от 01 июня 2025
+                {application?.createdAt ? `от ${formatCreatedAt(application.createdAt)}` : "—"}
               </div>
             </div>
 
@@ -329,12 +390,21 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
                     fontSize: 13,
                   }}
                 >
-                  МАЛОИМУЩИЕ
+                  {application?.benefits?.length
+                    ? application.benefits.map((id) => benefitLabels[id] || id).join(", ")
+                    : (userData?.benefits ? (() => {
+                        try {
+                          const ids = JSON.parse(userData.benefits) as string[];
+                          return Array.isArray(ids) ? ids.map((id) => benefitLabels[id] || id).join(", ") : "БЕЗ ЛЬГОТ";
+                        } catch {
+                          return "БЕЗ ЛЬГОТ";
+                        }
+                      })() : "БЕЗ ЛЬГОТ")}
                 </div>
               </div>
             </div>
 
-            {/* Documents */}
+            {/* Documents — реальные загруженные файлы из заявки */}
             <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
               <div
                 style={{
@@ -348,23 +418,60 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
                 </span>
               </div>
               <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
-                {["паспорт_скан.pdf", "справка_школа.pdf", "справка_доходы.pdf"].map((doc, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 10,
-                      padding: "10px 12px",
-                      border: "2px solid #000",
-                      fontSize: 12,
-                      fontWeight: 700,
-                    }}
-                  >
-                    <span>📄</span>
-                    <span>{doc}</span>
-                  </div>
-                ))}
+                {(() => {
+                  let paths: string[] = [];
+                  try {
+                    if (userData?.attachments) {
+                      const parsed = JSON.parse(userData.attachments);
+                      if (Array.isArray(parsed)) paths = parsed;
+                    }
+                  } catch {
+                    paths = [];
+                  }
+                  const apiBase = typeof window !== "undefined" ? window.location.origin + "/api" : "";
+                  if (paths.length === 0) {
+                    return (
+                      <div style={{ fontSize: 13, color: "#666", fontStyle: "italic" }}>
+                        Нет загруженных документов
+                      </div>
+                    );
+                  }
+                  return paths.map((path, i) => {
+                    const name = path.split("/").pop() || path;
+                    const href = `${apiBase}/${path}`;
+                    return (
+                      <a
+                        key={i}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "10px 12px",
+                          border: "2px solid #000",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#000",
+                          textDecoration: "none",
+                          backgroundColor: "#fff",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = "#F8EDAD";
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = "#fff";
+                        }}
+                      >
+                        <span>📄</span>
+                        <span style={{ wordBreak: "break-all" }}>{name}</span>
+                        <span style={{ marginLeft: "auto", fontSize: 11, color: "#666" }}>открыть</span>
+                      </a>
+                    );
+                  });
+                })()}
               </div>
             </div>
 
