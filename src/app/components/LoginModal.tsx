@@ -43,8 +43,14 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
       setError("Пользователь не найден. Сначала заполни форму регистрации.");
       return;
     }
-    const user = JSON.parse(raw);
-    if (user.email.toLowerCase() !== email.trim().toLowerCase()) {
+    let user: Record<string, string>;
+    try {
+      user = JSON.parse(raw);
+    } catch {
+      setError("Ошибка данных. Попробуйте зарегистрироваться снова.");
+      return;
+    }
+    if (user.email?.toLowerCase() !== email.trim().toLowerCase()) {
       setError("Неверный email или пароль");
       return;
     }

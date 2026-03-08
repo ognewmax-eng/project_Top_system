@@ -1,8 +1,11 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState, useRef } from "react";
+import { uploadFiles, getFileUrl } from "@/api/apiService";
 
 interface PersonalCabinetProps {
   onBack: () => void;
   userData: Record<string, string> | null;
+  /** Вызывается после успешной отправки доработанной заявки, чтобы обновить данные в App */
+  onDataUpdate?: () => void;
 }
 
 /** Заявка из хранилища (то же, что в панели администратора) */
@@ -10,9 +13,10 @@ interface StoredApplication {
   id: string;
   fullName?: string;
   email?: string;
-  status: "review" | "approved" | "rejected";
+  status: "review" | "approved" | "rejected" | "revision";
   createdAt: string;
   benefits?: string[];
+  revisionComment?: string;
   [key: string]: unknown;
 }
 
@@ -22,6 +26,12 @@ const statusConfig: Record<string, { label: string; color: string; textColor: st
     color: "#ED7C30",
     textColor: "#000",
     desc: "Ваша заявка получена и находится на рассмотрении. Ожидайте ответа в течение 3 рабочих дней.",
+  },
+  revision: {
+    label: "НА ДОРАБОТКЕ",
+    color: "#F59E0B",
+    textColor: "#000",
+    desc: "Администратор вернул заявку на доработку. Внесите правки и отправьте заявку снова.",
   },
   approved: {
     label: "ОДОБРЕНО",
@@ -82,11 +92,19 @@ function getMyApplication(userData: Record<string, string> | null): StoredApplic
   return mine[0];
 }
 
-export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
-  const application = useMemo(() => getMyApplication(userData), [userData?.email]);
+export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabinetProps) {
+  const [dataVersion, setDataVersion] = useState(0);
+  const application = useMemo(() => getMyApplication(userData), [userData?.email, dataVersion]);
 
   const currentStatus = application?.status ?? "review";
   const status = statusConfig[currentStatus];
+
+  const [editForm, setEditForm] = useState<Record<string, string>>(() => ({ ...(userData || {}) } as Record<string, string>));
+  const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
+  const [revisionSubmitting, setRevisionSubmitting] = useState(false);
+  const [revisionError, setRevisionError] = useState("");
+  const [revisionSuccess, setRevisionSuccess] = useState(false);
+  const revisionFileInputRef = useRef<HTMLInputElement>(null);
 
   const name = userData?.fullName || application?.fullName || "—";
   const registrationDate = formatCreatedAt(application?.createdAt);
@@ -95,7 +113,7 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
     const steps = [
       { label: "Заявка создана", date: registrationDate, done: true, active: false },
       { label: "На проверке", date: registrationDate, done: currentStatus !== "review", active: currentStatus === "review" },
-      { label: currentStatus === "approved" ? "Одобрена" : currentStatus === "rejected" ? "Отклонена" : "Одобрена / Отклонена", date: currentStatus === "approved" || currentStatus === "rejected" ? registrationDate : "—", done: currentStatus === "approved" || currentStatus === "rejected", active: false },
+      { label: currentStatus === "revision" ? "На доработке" : currentStatus === "approved" ? "Одобрена" : currentStatus === "rejected" ? "Отклонена" : "Одобрена / Отклонена", date: ["revision", "approved", "rejected"].includes(currentStatus) ? registrationDate : "—", done: ["revision", "approved", "rejected"].includes(currentStatus), active: currentStatus === "revision" },
       { label: "Направление выдано", date: "—", done: false, active: false },
       { label: "Трудоустроен", date: "—", done: false, active: false },
     ];
@@ -203,6 +221,20 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
         >
           {/* Left column */}
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            {revisionSuccess && (
+              <div
+                style={{
+                  padding: "16px 24px",
+                  backgroundColor: "#DCFCE7",
+                  border: "2px solid #16A34A",
+                  fontWeight: 900,
+                  fontSize: 15,
+                  color: "#166534",
+                }}
+              >
+                ✓ Доработанная заявка отправлена. Статус заявки: На проверке.
+              </div>
+            )}
             {/* Status card */}
             <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
               <div
@@ -223,6 +255,12 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
                 <p style={{ fontSize: 15, color: "#333", lineHeight: 1.6, margin: 0 }}>
                   {status.desc}
                 </p>
+                {currentStatus === "revision" && application?.revisionComment && (
+                  <div style={{ marginTop: 16, padding: "12px 16px", backgroundColor: "#FEF3C7", border: "2px solid #F59E0B" }}>
+                    <div style={{ fontSize: 11, fontWeight: 900, color: "#92400E", letterSpacing: "0.5px", marginBottom: 6 }}>КОММЕНТАРИЙ АДМИНИСТРАТОРА</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#000", whiteSpace: "pre-wrap" }}>{application.revisionComment}</div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -342,6 +380,149 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
                 </div>
               </div>
             </div>
+
+            {/* Форма доработки заявки (только при статусе «На доработке») */}
+            {currentStatus === "revision" && application && (
+              <div style={{ border: "2px solid #F59E0B", boxShadow: "4px 4px 0px #000" }}>
+                <div style={{ backgroundColor: "#F59E0B", padding: "16px 24px", borderBottom: "2px solid #000" }}>
+                  <span style={{ fontWeight: 900, fontSize: 16, color: "#000" }}>ДОРАБОТАТЬ ЗАЯВКУ</span>
+                </div>
+                <div style={{ padding: "24px" }}>
+                  <p style={{ fontSize: 13, color: "#555", marginBottom: 20 }}>
+                    Внесите правки в поля ниже и при необходимости догрузите файлы. После нажатия «Отправить доработанную заявку» заявка снова попадёт на проверку.
+                  </p>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+                    {[
+                      { key: "fullName", label: "ФИО", type: "text", placeholder: "Иванов Иван Иванович" },
+                      { key: "birthDate", label: "Дата рождения", type: "date" },
+                      { key: "passportSeries", label: "Серия паспорта", type: "text", placeholder: "0000" },
+                      { key: "passportNumber", label: "Номер паспорта", type: "text", placeholder: "000000" },
+                      { key: "address", label: "Адрес", type: "text", placeholder: "г. Москва, ул. Пример, д. 1" },
+                      { key: "school", label: "Школа", type: "text", placeholder: "ГБОУ Школа №..." },
+                      { key: "grade", label: "Класс", type: "select", options: ["7", "8", "9", "10", "11"] },
+                      { key: "shift", label: "Смена", type: "select", options: [{ v: "1", l: "1 смена" }, { v: "2", l: "2 смена" }, { v: "3", l: "3 смена" }] },
+                      { key: "phone", label: "Телефон", type: "tel", placeholder: "+7 (___) ___-__-__" },
+                      { key: "email", label: "Email", type: "email", placeholder: "example@mail.ru" },
+                    ].map((f) => (
+                      <div key={f.key} style={{ gridColumn: f.key === "address" ? "1 / -1" : undefined }}>
+                        <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#666", marginBottom: 4 }}>{f.label}</label>
+                        {f.type === "select" ? (
+                          <select
+                            value={editForm[f.key] || ""}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                            style={{ width: "100%", padding: "10px 12px", border: "2px solid #000", fontSize: 14, fontFamily: "'Inter', sans-serif" }}
+                          >
+                            <option value="">{f.key === "shift" ? "Выберите смену" : "Выберите класс"}</option>
+                            {Array.isArray(f.options) && (f.options as { v: string; l: string }[])[0]?.v
+                              ? (f.options as { v: string; l: string }[]).map((opt) => <option key={opt.v} value={opt.v}>{opt.l}</option>)
+                              : (f.options as string[] || []).map((opt) => <option key={opt} value={opt}>{opt} класс</option>)}
+                          </select>
+                        ) : (
+                          <input
+                            type={f.type as "text"}
+                            value={editForm[f.key] || ""}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                            placeholder={(f as { placeholder?: string }).placeholder}
+                            style={{ width: "100%", padding: "10px 12px", border: "2px solid #000", fontSize: 14, fontFamily: "'Inter', sans-serif", boxSizing: "border-box" }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#666", marginBottom: 8 }}>ДОБАВИТЬ ФАЙЛЫ (при необходимости)</label>
+                    <div
+                      onClick={() => revisionFileInputRef.current?.click()}
+                      style={{ border: "2px dashed #000", padding: "20px", textAlign: "center", cursor: "pointer", backgroundColor: "#fafafa", fontSize: 13, fontWeight: 700 }}
+                    >
+                      {revisionFiles.length > 0 ? `Выбрано файлов: ${revisionFiles.length}` : "Нажмите или перетащите файлы сюда"}
+                    </div>
+                    <input
+                      ref={revisionFileInputRef}
+                      type="file"
+                      multiple
+                      style={{ display: "none" }}
+                      onChange={(e) => e.target.files && setRevisionFiles((prev) => [...prev, ...Array.from(e.target.files!)])}
+                    />
+                  </div>
+                  {revisionError && (
+                    <div style={{ marginBottom: 16, padding: "10px 12px", backgroundColor: "#FEF2F2", border: "2px solid #DC2626", fontSize: 13, fontWeight: 700, color: "#DC2626" }}>
+                      {revisionError}
+                    </div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      setRevisionError("");
+                      setRevisionSubmitting(true);
+                      try {
+                        let existingPaths: string[] = [];
+                        try {
+                          if (editForm.attachments) {
+                            const parsed = JSON.parse(editForm.attachments);
+                            if (Array.isArray(parsed)) existingPaths = parsed;
+                          }
+                        } catch { /* ignore */ }
+                        let newPaths: string[] = [];
+                        if (revisionFiles.length > 0) {
+                          try {
+                            const res = await uploadFiles(revisionFiles, {
+                              shift: editForm.shift || application?.shift || "1",
+                              fullName: (editForm.fullName || application?.fullName || "").trim() || "Участник",
+                            });
+                            if (res.results) newPaths = res.results.filter((r) => r.saved && r.path).map((r) => r.path!);
+                          } catch {
+                            // Сервер вернул не JSON (например PHP не выполняется) — сохраняем только правки без новых файлов
+                            newPaths = [];
+                          }
+                        }
+                        const allPaths = [...existingPaths, ...newPaths];
+                        const updatedUser = { ...editForm, attachments: JSON.stringify(allPaths), benefits: editForm.benefits || userData?.benefits || "[]" };
+                        const { password: _pw, confirmPassword: _cp, ...applicationData } = updatedUser;
+                        const raw = localStorage.getItem("top_applications");
+                        const apps: StoredApplication[] = raw ? JSON.parse(raw) : [];
+                        let benefitsArr: string[] = [];
+                        try {
+                          const b = updatedUser.benefits || userData?.benefits || "[]";
+                          benefitsArr = JSON.parse(b);
+                          if (!Array.isArray(benefitsArr)) benefitsArr = [];
+                        } catch { /* ignore */ }
+                        const updated = apps.map((a) =>
+                          a.id === application!.id
+                            ? { ...a, ...applicationData, benefits: benefitsArr, status: "review" as const, revisionComment: "" }
+                            : a
+                        );
+                        localStorage.setItem("top_applications", JSON.stringify(updated));
+                        localStorage.setItem("top_user", JSON.stringify(updatedUser));
+                        setRevisionFiles([]);
+                        setRevisionSuccess(true);
+                        setDataVersion((v) => v + 1);
+                        onDataUpdate?.();
+                        setTimeout(() => setRevisionSuccess(false), 5000);
+                      } catch (err) {
+                        setRevisionError(err instanceof Error ? err.message : "Ошибка при отправке. Попробуйте ещё раз.");
+                      } finally {
+                        setRevisionSubmitting(false);
+                      }
+                    }}
+                    disabled={revisionSubmitting}
+                    style={{
+                      width: "100%",
+                      padding: "14px",
+                      fontSize: 16,
+                      fontWeight: 900,
+                      color: "#000",
+                      backgroundColor: revisionSubmitting ? "#ccc" : "#F59E0B",
+                      border: "2px solid #000",
+                      boxShadow: "4px 4px 0px #000",
+                      cursor: revisionSubmitting ? "not-allowed" : "pointer",
+                      fontFamily: "'Inter', sans-serif",
+                    }}
+                  >
+                    {revisionSubmitting ? "Отправка…" : "ОТПРАВИТЬ ДОРАБОТАННУЮ ЗАЯВКУ"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right column */}
@@ -428,7 +609,6 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
                   } catch {
                     paths = [];
                   }
-                  const apiBase = typeof window !== "undefined" ? window.location.origin + "/api" : "";
                   if (paths.length === 0) {
                     return (
                       <div style={{ fontSize: 13, color: "#666", fontStyle: "italic" }}>
@@ -438,7 +618,7 @@ export function PersonalCabinet({ onBack, userData }: PersonalCabinetProps) {
                   }
                   return paths.map((path, i) => {
                     const name = path.split("/").pop() || path;
-                    const href = `${apiBase}/${path}`;
+                    const href = getFileUrl(path);
                     return (
                       <a
                         key={i}

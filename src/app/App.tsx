@@ -15,8 +15,12 @@ export default function App() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const [userData, setUserData] = useState<Record<string, string> | null>(() => {
-    const raw = localStorage.getItem("top_user");
-    return raw ? JSON.parse(raw) : null;
+    try {
+      const raw = localStorage.getItem("top_user");
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   });
 
   const scrollToForm = () => {
@@ -31,12 +35,18 @@ export default function App() {
 
     // Добавляем заявку в общий список для администратора
     const raw = localStorage.getItem("top_applications");
-    const apps = raw ? JSON.parse(raw) : [];
+    let apps: Record<string, unknown>[];
+    try {
+      apps = raw ? JSON.parse(raw) : [];
+    } catch {
+      apps = [];
+    }
+    const { password: _pw, ...dataWithoutPassword } = data;
     const newApp = {
-      ...data,
+      ...dataWithoutPassword,
       id: `app_${Date.now()}`,
       status: "review",
-      benefits: data.benefits ? JSON.parse(data.benefits) : [],
+      benefits: data.benefits ? (() => { try { return JSON.parse(data.benefits); } catch { return []; } })() : [],
       createdAt: new Date().toISOString(),
     };
     apps.push(newApp);
@@ -62,8 +72,12 @@ export default function App() {
   };
 
   const handleLoginSuccess = () => {
-    const raw = localStorage.getItem("top_user");
-    if (raw) setUserData(JSON.parse(raw));
+    try {
+      const raw = localStorage.getItem("top_user");
+      if (raw) setUserData(JSON.parse(raw));
+    } catch {
+      setUserData(null);
+    }
     handleOpenCabinet();
   };
 
@@ -73,6 +87,14 @@ export default function App() {
         <PersonalCabinet
           onBack={() => setView("main")}
           userData={userData}
+          onDataUpdate={() => {
+            try {
+              const raw = localStorage.getItem("top_user");
+              if (raw) setUserData(JSON.parse(raw));
+            } catch {
+              setUserData(null);
+            }
+          }}
         />
       ) : view === "admin" ? (
         <AdminPanel onBack={() => setView("main")} />

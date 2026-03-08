@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { getFileUrl } from "@/api/apiService";
 
 interface Application {
   id: string;
@@ -12,8 +13,11 @@ interface Application {
   phone: string;
   email: string;
   benefits: string[];
-  status: "review" | "approved" | "rejected";
+  status: "review" | "approved" | "rejected" | "revision";
   createdAt: string;
+  revisionComment?: string;
+  /** JSON-строка массива путей файлов, например ["uploads/doc.pdf"] */
+  attachments?: string;
 }
 
 interface AdminPanelProps {
@@ -23,9 +27,10 @@ interface AdminPanelProps {
 const ADMIN_PASSWORD = "admin123";
 
 const statusLabels: Record<string, { label: string; color: string; text: string }> = {
-  review:   { label: "НА ПРОВЕРКЕ", color: "#ED7C30", text: "#000" },
-  approved: { label: "ОДОБРЕНО",    color: "#16A34A", text: "#fff" },
-  rejected: { label: "ОТКЛОНЕНО",   color: "#DC2626", text: "#fff" },
+  review:   { label: "НА ПРОВЕРКЕ",   color: "#ED7C30", text: "#000" },
+  revision: { label: "НА ДОРАБОТКЕ", color: "#F59E0B", text: "#000" },
+  approved: { label: "ОДОБРЕНО",      color: "#16A34A", text: "#fff" },
+  rejected: { label: "ОТКЛОНЕНО",     color: "#DC2626", text: "#fff" },
 };
 
 function formatCreatedAt(createdAt: string): string {
@@ -45,8 +50,12 @@ function formatCreatedAt(createdAt: string): string {
 }
 
 function getApplications(): Application[] {
-  const raw = localStorage.getItem("top_applications");
-  return raw ? JSON.parse(raw) : [];
+  try {
+    const raw = localStorage.getItem("top_applications");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
 }
 
 function saveApplications(apps: Application[]) {
@@ -61,8 +70,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [pwError, setPwError]         = useState(false);
   const [showPw, setShowPw]           = useState(false);
   const [apps, setApps]               = useState<Application[]>([]);
-  const [filterStatus, setFilterStatus] = useState<"all" | "review" | "approved" | "rejected">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "review" | "revision" | "approved" | "rejected">("all");
   const [expandedId, setExpandedId]   = useState<string | null>(null);
+  const [revisionComment, setRevisionComment] = useState("");
+  const [revisionTargetId, setRevisionTargetId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authed) setApps(getApplications());
@@ -77,10 +88,16 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     }
   };
 
-  const updateStatus = (id: string, status: "review" | "approved" | "rejected") => {
-    const updated = apps.map((a) => (a.id === id ? { ...a, status } : a));
+  const updateStatus = (id: string, status: "review" | "approved" | "rejected" | "revision", comment?: string) => {
+    const updated = apps.map((a) =>
+      a.id === id
+        ? { ...a, status, ...(status === "revision" && comment !== undefined ? { revisionComment: comment } : status !== "revision" ? { revisionComment: "" } : {}) }
+        : a
+    );
     setApps(updated);
     saveApplications(updated);
+    setRevisionTargetId(null);
+    setRevisionComment("");
   };
 
   const filtered = filterStatus === "all" ? apps : apps.filter((a) => a.status === filterStatus);
@@ -88,6 +105,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const counts = {
     all:      apps.length,
     review:   apps.filter((a) => a.status === "review").length,
+    revision: apps.filter((a) => a.status === "revision").length,
     approved: apps.filter((a) => a.status === "approved").length,
     rejected: apps.filter((a) => a.status === "rejected").length,
   };
@@ -237,9 +255,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 ВОЙТИ В ПАНЕЛЬ
               </button>
 
-              <p style={{ fontSize: 12, color: "#aaa", marginTop: 16, textAlign: "center" }}>
-                Демо-пароль: <strong style={{ color: "#000" }}>admin123</strong>
-              </p>
             </div>
           </div>
         </div>
@@ -302,12 +317,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: "32px 24px" }}>
 
         {/* Stats row */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 32 }}>
           {[
             { key: "all",      label: "ВСЕГО ЗАЯВОК",    count: counts.all,      bg: "#fff",     border: "#000" },
             { key: "review",   label: "НА ПРОВЕРКЕ",     count: counts.review,   bg: "#F8EDAD",  border: "#000" },
+            { key: "revision", label: "НА ДОРАБОТКЕ",   count: counts.revision, bg: "#FEF3C7",  border: "#F59E0B" },
             { key: "approved", label: "ОДОБРЕНО",        count: counts.approved, bg: "#DCFCE7",  border: "#16A34A" },
-            { key: "rejected", label: "ОТКЛОНЕНО",       count: counts.rejected, bg: "#FEF2F2",  border: "#DC2626" },
+            { key: "rejected", label: "ОТКЛОНЕНО",      count: counts.rejected, bg: "#FEF2F2",  border: "#DC2626" },
           ].map((stat) => (
             <div
               key={stat.key}
@@ -454,9 +470,63 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           ))}
                         </div>
 
+                        {app.revisionComment && (
+                          <div style={{ marginBottom: 24, padding: "12px 16px", backgroundColor: "#FEF3C7", border: "2px solid #F59E0B" }}>
+                            <div style={{ fontSize: 11, fontWeight: 900, color: "#92400E", letterSpacing: "0.5px", marginBottom: 6 }}>КОММЕНТАРИЙ ДЛЯ ЗАЯВИТЕЛЯ</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "#000", whiteSpace: "pre-wrap" }}>{app.revisionComment}</div>
+                          </div>
+                        )}
+
+                        {/* Файлы заявки */}
+                        {(() => {
+                          let paths: string[] = [];
+                          try {
+                            if (app.attachments) {
+                              const parsed = JSON.parse(app.attachments);
+                              if (Array.isArray(parsed)) paths = parsed.filter((p): p is string => typeof p === "string" && p.length > 0);
+                            }
+                          } catch { /* ignore */ }
+                          return paths.length > 0 ? (
+                            <div style={{ marginBottom: 24, padding: "16px 20px", backgroundColor: "#fff", border: "2px solid #000" }}>
+                              <div style={{ fontSize: 11, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 12 }}>ФАЙЛЫ ЗАЯВКИ</div>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                                {paths.map((path, i) => {
+                                  const url = getFileUrl(path);
+                                  const name = path.split("/").pop() || path || `Файл ${i + 1}`;
+                                  return (
+                                    <a
+                                      key={`${app.id}-${i}-${path}`}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      style={{
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: 6,
+                                        padding: "8px 14px",
+                                        border: "2px solid #000",
+                                        backgroundColor: "#F8EDAD",
+                                        color: "#000",
+                                        fontSize: 13,
+                                        fontWeight: 700,
+                                        textDecoration: "none",
+                                        fontFamily: "'Inter', sans-serif",
+                                      }}
+                                    >
+                                      <span style={{ fontSize: 14 }}>📎</span>
+                                      {name}
+                                    </a>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ) : null;
+                        })()}
+
                         {/* Action buttons */}
                         {app.status === "review" && (
-                          <div style={{ display: "flex", gap: 12 }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
                             <button
                               onClick={(e) => { e.stopPropagation(); updateStatus(app.id, "approved"); }}
                               style={{
@@ -509,9 +579,70 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             >
                               ✕ ОТКЛОНИТЬ
                             </button>
+                            {revisionTargetId === app.id ? (
+                              <div style={{ flexBasis: "100%", display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                                <textarea
+                                  value={revisionComment}
+                                  onChange={(e) => setRevisionComment(e.target.value)}
+                                  placeholder="Укажите, что нужно доработать в заявке..."
+                                  style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                <div style={{ display: "flex", gap: 8 }}>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); updateStatus(app.id, "revision", revisionComment || "Требуется доработка."); }}
+                                    style={{
+                                      padding: "8px 20px",
+                                      border: "2px solid #000",
+                                      backgroundColor: "#F59E0B",
+                                      color: "#000",
+                                      fontWeight: 900,
+                                      fontSize: 12,
+                                      cursor: "pointer",
+                                      fontFamily: "'Inter', sans-serif",
+                                    }}
+                                  >
+                                    ОТПРАВИТЬ НА ДОРАБОТКУ
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setRevisionTargetId(null); setRevisionComment(""); }}
+                                    style={{
+                                      padding: "8px 20px",
+                                      border: "2px solid #999",
+                                      backgroundColor: "#fff",
+                                      color: "#555",
+                                      fontWeight: 900,
+                                      fontSize: 12,
+                                      cursor: "pointer",
+                                      fontFamily: "'Inter', sans-serif",
+                                    }}
+                                  >
+                                    Отмена
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setRevisionTargetId(app.id); setRevisionComment(app.revisionComment || ""); }}
+                                style={{
+                                  padding: "10px 24px",
+                                  border: "2px solid #000",
+                                  backgroundColor: "#F59E0B",
+                                  color: "#000",
+                                  fontWeight: 900,
+                                  fontSize: 13,
+                                  cursor: "pointer",
+                                  letterSpacing: "0.5px",
+                                  boxShadow: "3px 3px 0px #000",
+                                  fontFamily: "'Inter', sans-serif",
+                                }}
+                              >
+                                ↩ ВЕРНУТЬ НА ДОРАБОТКУ
+                              </button>
+                            )}
                           </div>
                         )}
-                        {app.status !== "review" && (
+                        {(app.status === "approved" || app.status === "rejected" || app.status === "revision") && (
                           <button
                             onClick={(e) => { e.stopPropagation(); updateStatus(app.id, "review"); }}
                             style={{

@@ -27,8 +27,15 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     email: "",
     password: "",
     confirmPassword: "",
+    shift: "",
   });
   const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
+
+  const shiftOptions = [
+    { id: "1", label: "1 СМЕНА", dates: "1 июня — 30 июня" },
+    { id: "2", label: "2 СМЕНА", dates: "1 июля — 31 июля" },
+    { id: "3", label: "3 СМЕНА", dates: "1 августа — 31 августа" },
+  ];
   const [dragOver, setDragOver] = useState(false);
   /** Список выбранных файлов для загрузки на сервер */
   const [fileList, setFileList] = useState<File[]>([]);
@@ -407,6 +414,89 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
               </div>
             </div>
 
+            {/* Выбор смены */}
+            <div
+              style={{
+                borderTop: "2px solid #000",
+                paddingTop: 32,
+                marginBottom: 32,
+              }}
+            >
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 16,
+                  marginBottom: 24,
+                }}
+              >
+                <div
+                  style={{
+                    backgroundColor: "#ED7C30",
+                    padding: "4px 12px",
+                    border: "2px solid #000",
+                  }}
+                >
+                  <span style={{ color: "#000", fontWeight: 900, fontSize: 13, letterSpacing: "0.5px" }}>
+                    ВЫБОР СМЕНЫ
+                  </span>
+                </div>
+                <span style={{ fontSize: 13, color: "#666" }}>Выберите смену для участия</span>
+              </div>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(3, 1fr)",
+                  gap: 12,
+                }}
+              >
+                {shiftOptions.map((opt) => {
+                  const isSelected = form.shift === opt.id;
+                  return (
+                    <div
+                      key={opt.id}
+                      onClick={() => setForm((f) => ({ ...f, shift: opt.id }))}
+                      style={{
+                        border: "2px solid #000",
+                        padding: "16px 20px",
+                        cursor: "pointer",
+                        backgroundColor: isSelected ? "#ED7C30" : "#fff",
+                        boxShadow: isSelected ? "4px 4px 0px #000" : "2px 2px 0px #000",
+                        transition: "all 0.1s",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 6,
+                        transform: isSelected ? "translate(-1px,-1px)" : "none",
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontWeight: 900, fontSize: 13, letterSpacing: "0.3px" }}>{opt.label}</span>
+                        <div
+                          style={{
+                            width: 20,
+                            height: 20,
+                            border: "2px solid #000",
+                            backgroundColor: isSelected ? "#000" : "#fff",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {isSelected && (
+                            <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
+                              <path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="square" />
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: 12, color: "#555" }}>{opt.dates}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* File upload */}
             <div
               style={{
@@ -528,7 +618,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                 >
                   {agreed && (
                     <svg width="14" height="11" viewBox="0 0 14 11" fill="none">
-                      <path d="M1 5.5L5 9.5L13 1.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="square" />
+                      <path d="M1 5.5L5 9.5L13 1.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="square" />     
                     </svg>
                   )}
                 </div>
@@ -550,13 +640,20 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                     setPasswordError("Пароли не совпадают");
                     return;
                   }
+                  if (!form.shift) {
+                    setSubmitError("Выберите смену для участия"); 
+                    return;
+                  }
                   setSubmitting(true);
                   const payload = { ...form, benefits: JSON.stringify(selectedBenefits) };
                   try {
                     // Сначала загружаем файлы (если есть)
                     let uploadedPaths: string[] = [];
                     if (fileList.length > 0) {
-                      const uploadRes = await uploadFiles(fileList);
+                      const uploadRes = await uploadFiles(fileList, {
+                        shift: form.shift,
+                        fullName: form.fullName.trim() || "Участник",
+                      });
                       if (uploadRes.results) {
                         uploadedPaths = uploadRes.results.filter((r) => r.saved && r.path).map((r) => r.path!);
                       }

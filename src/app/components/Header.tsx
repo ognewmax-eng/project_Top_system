@@ -85,7 +85,7 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
               (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #ED7C30";
             }}
           >
-            ⚙ ADMIN
+            Админ. панель
           </button>
 
           {/* Cabinet button */}

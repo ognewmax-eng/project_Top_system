@@ -40,7 +40,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               marginBottom: 24,
             }}
           >
-            СЕЗОН 2025
+            СЕЗОН 2026
           </div>
 
           <h1
@@ -67,7 +67,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               fontWeight: 400,
             }}
           >
-            Программа временной занятости молодёжи от 14 до 18 лет. Получи официальный опыт, заработок и новые знакомства этим летом.
+            Программа временной занятости молодёжи от 14 до 17 лет. Получи официальный опыт, заработок и новые знакомства этим летом.
           </p>
 
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
@@ -129,9 +129,9 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
           }}
         >
           {[
-            { num: "14–18", label: "лет — возраст\nучастников" },
-            { num: "5000+", label: "подростков\nтрудоустроено" },
-            { num: "2 мес.", label: "длительность\nпрограммы" },
+            { num: "14–17", label: "лет — возраст\nучастников" },
+            { num: "1000+", label: "подростков\nтрудоустроено" },
+            { num: "2 нед.", label: "длительность\nпрограммы" },
             { num: "100%", label: "официальное\nтрудоустройство" },
           ].map((stat, i) => (
             <div
