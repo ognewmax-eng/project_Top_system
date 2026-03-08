@@ -9,6 +9,7 @@ import { SuccessModal } from "./components/SuccessModal";
 import { LoginModal } from "./components/LoginModal";
 import { AdminPanel } from "./components/AdminPanel";
 import { Footer } from "./components/Footer";
+import { YandexOAuthPage } from "./components/YandexOAuthPage";
 
 export default function App() {
   const [view, setView] = useState<"main" | "cabinet" | "admin">("main");
@@ -80,6 +81,12 @@ export default function App() {
     }
     handleOpenCabinet();
   };
+
+  // Страница настройки OAuth для загрузки на Яндекс.Диск — только по прямой ссылке /yandexouth
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "";
+  if (pathname === "/yandexouth") {
+    return <YandexOAuthPage />;
+  }
 
   return (
     <div style={{ fontFamily: "'Inter', sans-serif", backgroundColor: "#fff" }}>

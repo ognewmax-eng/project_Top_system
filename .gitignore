@@ -1,4 +1,6 @@
 node_modules
-# OAuth-токен Яндекс.Диска (не коммитить)
+# OAuth-токен и учётные данные приложения Яндекс (не коммитить)
 public/api/.yandex_oauth_token
+public/api/.yandex_app_credentials
 .yandex_oauth_token
+.yandex_app_credentials
