@@ -1,4 +1,5 @@
-import React from "react";
+import React, { useState } from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface HeaderProps {
   onCabinetClick: () => void;
@@ -7,6 +8,9 @@ interface HeaderProps {
 }
 
 export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
+  const mobile = useIsMobile();
+  const [menuOpen, setMenuOpen] = useState(false);
+
   return (
     <header
       style={{
@@ -45,78 +49,77 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
             <span style={{ color: "#000", fontWeight: 900, fontSize: 11 }}>ТОП</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-            <span style={{ fontWeight: 900, fontSize: 18, letterSpacing: "-0.5px", color: "#000" }}>
+            <span style={{ fontWeight: 900, fontSize: mobile ? 15 : 18, letterSpacing: "-0.5px", color: "#000" }}>
               ТРУДОВЫЕ ОТРЯДЫ
             </span>
-            <span style={{ fontWeight: 700, fontSize: 12, letterSpacing: "1px", color: "#555" }}>
+            <span style={{ fontWeight: 700, fontSize: mobile ? 10 : 12, letterSpacing: "1px", color: "#555" }}>
               ПОДРОСТКОВ
             </span>
           </div>
         </div>
 
-        {/* Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-
-          {/* Admin button */}
+        {mobile ? (
           <button
-            onClick={onAdminClick}
+            onClick={() => setMenuOpen(!menuOpen)}
             style={{
-              padding: "8px 16px",
-              fontSize: 12,
-              fontWeight: 900,
-              color: "#fff",
-              backgroundColor: "#000",
-              border: "2px solid #000",
-              boxShadow: "3px 3px 0px #ED7C30",
-              cursor: "pointer",
-              letterSpacing: "1px",
-              transition: "transform 0.1s, box-shadow 0.1s",
-              fontFamily: "'Inter', sans-serif",
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = "translate(1px,1px)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "2px 2px 0px #ED7C30";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = "translate(0,0)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #ED7C30";
+              width: 40, height: 40, border: "2px solid #000", backgroundColor: menuOpen ? "#F8EDAD" : "transparent",
+              cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: 20, fontFamily: "'Inter', sans-serif",
             }}
           >
-            Админ. панель
+            {menuOpen ? "✕" : "☰"}
           </button>
+        ) : (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <button
+              onClick={onAdminClick}
+              style={{
+                padding: "8px 16px", fontSize: 12, fontWeight: 900, color: "#fff",
+                backgroundColor: "#000", border: "2px solid #000", boxShadow: "3px 3px 0px #ED7C30",
+                cursor: "pointer", letterSpacing: "1px", fontFamily: "'Inter', sans-serif",
+                display: "flex", alignItems: "center", gap: 6,
+              }}
+            >
+              Админ. панель
+            </button>
+            <button
+              onClick={onCabinetClick}
+              style={{
+                padding: "8px 20px", fontSize: 13, fontWeight: 900, color: "#000",
+                backgroundColor: "#F8EDAD", border: "2px solid #000", boxShadow: "3px 3px 0px #000",
+                cursor: "pointer", letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              ЛИЧНЫЙ КАБИНЕТ
+            </button>
+          </div>
+        )}
+      </div>
 
-          {/* Cabinet button */}
+      {mobile && menuOpen && (
+        <div style={{ borderTop: "2px solid #000", padding: "12px 24px", display: "flex", flexDirection: "column", gap: 10, backgroundColor: "#fff" }}>
           <button
-            onClick={onCabinetClick}
+            onClick={() => { setMenuOpen(false); onAdminClick(); }}
             style={{
-              padding: "8px 20px",
-              fontSize: 13,
-              fontWeight: 900,
-              color: "#000",
-              backgroundColor: "#F8EDAD",
-              border: "2px solid #000",
-              boxShadow: "3px 3px 0px #000",
-              cursor: "pointer",
-              letterSpacing: "0.5px",
-              transition: "transform 0.1s, box-shadow 0.1s",
-              fontFamily: "'Inter', sans-serif",
+              width: "100%", padding: "12px", fontSize: 13, fontWeight: 900, color: "#fff",
+              backgroundColor: "#000", border: "2px solid #000", cursor: "pointer",
+              letterSpacing: "1px", fontFamily: "'Inter', sans-serif",
             }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = "translate(1px,1px)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "2px 2px 0px #000";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = "translate(0,0)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #000";
+          >
+            АДМИН. ПАНЕЛЬ
+          </button>
+          <button
+            onClick={() => { setMenuOpen(false); onCabinetClick(); }}
+            style={{
+              width: "100%", padding: "12px", fontSize: 13, fontWeight: 900, color: "#000",
+              backgroundColor: "#F8EDAD", border: "2px solid #000", cursor: "pointer",
+              letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif",
             }}
           >
             ЛИЧНЫЙ КАБИНЕТ
           </button>
         </div>
-      </div>
+      )}
     </header>
   );
 }

@@ -1,6 +1,9 @@
 import React from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 export function HowItWorks() {
+  const mobile = useIsMobile();
+
   const steps = [
     {
       num: "01",
@@ -38,8 +41,8 @@ export function HowItWorks() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px" }}>
-        <div style={{ marginBottom: 48 }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: mobile ? "48px 20px" : "80px 24px" }}>
+        <div style={{ marginBottom: mobile ? 28 : 48 }}>
           <span
             style={{
               display: "inline-block",
@@ -56,7 +59,7 @@ export function HowItWorks() {
           </span>
           <h2
             style={{
-              fontSize: "clamp(36px, 5vw, 60px)",
+              fontSize: mobile ? "clamp(28px, 8vw, 40px)" : "clamp(36px, 5vw, 60px)",
               fontWeight: 900,
               color: "#000",
               lineHeight: 1,
@@ -71,7 +74,7 @@ export function HowItWorks() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
+            gridTemplateColumns: mobile ? "1fr" : "repeat(4, 1fr)",
             gap: 0,
             border: "2px solid #000",
           }}
@@ -81,43 +84,49 @@ export function HowItWorks() {
               key={i}
               style={{
                 backgroundColor: step.color,
-                borderRight: i < steps.length - 1 ? "2px solid #000" : "none",
-                padding: "32px 24px",
+                borderRight: !mobile && i < steps.length - 1 ? "2px solid #000" : "none",
+                borderBottom: mobile && i < steps.length - 1 ? "2px solid #000" : "none",
+                padding: mobile ? "24px 20px" : "32px 24px",
                 display: "flex",
-                flexDirection: "column",
+                flexDirection: mobile ? "row" : "column",
                 gap: 16,
+                alignItems: mobile ? "flex-start" : undefined,
               }}
             >
               <div
                 style={{
-                  fontSize: 48,
+                  fontSize: mobile ? 36 : 48,
                   fontWeight: 900,
                   color: step.textColor || "#000",
                   lineHeight: 1,
                   opacity: 0.3,
+                  flexShrink: 0,
                 }}
               >
                 {step.num}
               </div>
-              <div
-                style={{
-                  fontSize: 18,
-                  fontWeight: 900,
-                  color: step.textColor || "#000",
-                  lineHeight: 1.1,
-                }}
-              >
-                {step.title}
-              </div>
-              <div
-                style={{
-                  fontSize: 14,
-                  color: step.textColor || "#000",
-                  lineHeight: 1.5,
-                  opacity: 0.85,
-                }}
-              >
-                {step.desc}
+              <div>
+                <div
+                  style={{
+                    fontSize: mobile ? 15 : 18,
+                    fontWeight: 900,
+                    color: step.textColor || "#000",
+                    lineHeight: 1.1,
+                    marginBottom: 8,
+                  }}
+                >
+                  {step.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: mobile ? 13 : 14,
+                    color: step.textColor || "#000",
+                    lineHeight: 1.5,
+                    opacity: 0.85,
+                  }}
+                >
+                  {step.desc}
+                </div>
               </div>
             </div>
           ))}

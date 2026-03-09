@@ -1,10 +1,13 @@
 import React from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface HeroSectionProps {
   onApplyClick: () => void;
 }
 
 export function HeroSection({ onApplyClick }: HeroSectionProps) {
+  const mobile = useIsMobile();
+
   return (
     <section
       id="about"
@@ -19,10 +22,10 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
         style={{
           maxWidth: 1200,
           margin: "0 auto",
-          padding: "80px 24px",
+          padding: mobile ? "48px 20px" : "80px 24px",
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: 48,
+          gridTemplateColumns: mobile ? "1fr" : "1fr 1fr",
+          gap: mobile ? 32 : 48,
           alignItems: "center",
         }}
       >
@@ -37,7 +40,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               fontWeight: 900,
               fontSize: 13,
               letterSpacing: "1px",
-              marginBottom: 24,
+              marginBottom: mobile ? 16 : 24,
             }}
           >
             СЕЗОН 2026
@@ -45,12 +48,12 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
 
           <h1
             style={{
-              fontSize: "clamp(52px, 8vw, 100px)",
+              fontSize: mobile ? "clamp(40px, 12vw, 60px)" : "clamp(52px, 8vw, 100px)",
               fontWeight: 900,
               color: "#000",
               lineHeight: 0.9,
               letterSpacing: "-2px",
-              margin: "0 0 24px 0",
+              margin: mobile ? "0 0 16px 0" : "0 0 24px 0",
               textTransform: "uppercase",
             }}
           >
@@ -60,9 +63,9 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
           <p
             style={{
               color: "#000",
-              fontSize: 18,
+              fontSize: mobile ? 15 : 18,
               lineHeight: 1.5,
-              marginBottom: 40,
+              marginBottom: mobile ? 24 : 40,
               maxWidth: 440,
               fontWeight: 400,
             }}
@@ -70,12 +73,12 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
             Программа временной занятости молодёжи от 14 до 17 лет. Получи официальный опыт, заработок и новые знакомства этим летом.
           </p>
 
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: mobile ? 10 : 16, flexWrap: "wrap" }}>
             <button
               onClick={onApplyClick}
               style={{
-                padding: "18px 40px",
-                fontSize: 18,
+                padding: mobile ? "14px 24px" : "18px 40px",
+                fontSize: mobile ? 15 : 18,
                 fontWeight: 900,
                 color: "#000",
                 backgroundColor: "#ED7C30",
@@ -83,40 +86,12 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 boxShadow: "5px 5px 0px #000",
                 cursor: "pointer",
                 letterSpacing: "0.5px",
-                transition: "transform 0.1s, box-shadow 0.1s",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translate(2px,2px)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #000";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translate(0,0)";
-                (e.currentTarget as HTMLElement).style.boxShadow = "5px 5px 0px #000";
+                flex: mobile ? "1 1 100%" : undefined,
               }}
             >
               ПОДАТЬ ЗАЯВКУ →
             </button>
 
-            <button
-              style={{
-                padding: "18px 40px",
-                fontSize: 18,
-                fontWeight: 900,
-                color: "#000",
-                backgroundColor: "transparent",
-                border: "2px solid #000",
-                cursor: "pointer",
-                letterSpacing: "0.5px",
-              }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.backgroundColor = "rgba(0,0,0,0.08)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.backgroundColor = "transparent";
-              }}
-            >
-              УЗНАТЬ БОЛЬШЕ
-            </button>
           </div>
         </div>
 
@@ -125,7 +100,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
           style={{
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
-            gap: 16,
+            gap: mobile ? 10 : 16,
           }}
         >
           {[
@@ -139,13 +114,13 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               style={{
                 backgroundColor: i % 2 === 0 ? "#fff" : "#ED7C30",
                 border: "2px solid #000",
-                boxShadow: "4px 4px 0px #000",
-                padding: "24px",
+                boxShadow: mobile ? "3px 3px 0px #000" : "4px 4px 0px #000",
+                padding: mobile ? "16px" : "24px",
               }}
             >
               <div
                 style={{
-                  fontSize: 36,
+                  fontSize: mobile ? 24 : 36,
                   fontWeight: 900,
                   color: "#000",
                   lineHeight: 1,
@@ -154,7 +129,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
               >
                 {stat.num}
               </div>
-              <div style={{ fontSize: 13, color: "#000", fontWeight: 700, whiteSpace: "pre-line" }}>
+              <div style={{ fontSize: mobile ? 11 : 13, color: "#000", fontWeight: 700, whiteSpace: "pre-line" }}>
                 {stat.label}
               </div>
             </div>

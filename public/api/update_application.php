@@ -44,15 +44,44 @@ try {
 
         $appId = (int) ($data['application_id'] ?? 0);
         $status = $data['status'] ?? '';
-        if ($appId <= 0 || !in_array($status, ['review', 'approved', 'rejected', 'revision'], true)) {
+        if ($appId <= 0 || !in_array($status, ['review', 'approved', 'rejected', 'revision', 'reserve'], true)) {
             jsonResponse(['success' => false, 'error' => 'Неверные параметры (application_id, status)'], 400);
         }
 
         $comment = $data['revision_comment'] ?? '';
-        $stmt = $pdo->prepare('UPDATE applications SET status = :status, revision_comment = :comment WHERE id = :id');
-        $stmt->execute(['status' => $status, 'comment' => $comment, 'id' => $appId]);
 
-        jsonResponse(['success' => true, 'message' => 'Статус обновлён']);
+        $editableFields = [];
+        $editParams = ['id' => $appId];
+        $fieldMap = [
+            'fullName'       => 'full_name',
+            'birthDate'      => 'birth_date',
+            'passportSeries' => 'passport_series',
+            'passportNumber' => 'passport_number',
+            'address'        => 'address',
+            'school'         => 'school',
+            'grade'          => 'grade',
+            'phone'          => 'phone',
+            'email'          => 'email',
+            'shift'          => 'shift',
+            'benefits'       => 'benefits',
+            'attachments'    => 'attachments',
+        ];
+        foreach ($fieldMap as $jsKey => $dbCol) {
+            if (isset($data[$jsKey]) && $data[$jsKey] !== '') {
+                $editableFields[] = "$dbCol = :$dbCol";
+                $editParams[$dbCol] = $data[$jsKey];
+            }
+        }
+
+        $editableFields[] = 'status = :status';
+        $editableFields[] = 'revision_comment = :comment';
+        $editParams['status'] = $status;
+        $editParams['comment'] = $comment;
+
+        $sql = 'UPDATE applications SET ' . implode(', ', $editableFields) . ' WHERE id = :id';
+        $pdo->prepare($sql)->execute($editParams);
+
+        jsonResponse(['success' => true, 'message' => 'Заявка обновлена']);
     }
 
     $user = authenticateUser($pdo);

@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { loginUser } from "@/api/apiService";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface LoginModalProps {
   onClose: () => void;
@@ -7,6 +8,7 @@ interface LoginModalProps {
 }
 
 export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
+  const mobile = useIsMobile();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -76,7 +78,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         style={{
           backgroundColor: "#fff",
           border: "2px solid #000",
-          boxShadow: "8px 8px 0px #000",
+          boxShadow: mobile ? "4px 4px 0px #000" : "8px 8px 0px #000",
           width: "100%",
           maxWidth: 440,
         }}
@@ -86,7 +88,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         <div
           style={{
             backgroundColor: "#F8EDAD",
-            padding: "20px 28px",
+            padding: mobile ? "16px 20px" : "20px 28px",
             borderBottom: "2px solid #000",
             display: "flex",
             alignItems: "center",
@@ -122,7 +124,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         </div>
 
         {/* Body */}
-        <div style={{ padding: "28px" }}>
+        <div style={{ padding: mobile ? "20px 16px" : "28px" }}>
           <p style={{ fontSize: 14, color: "#555", lineHeight: 1.5, marginBottom: 24 }}>
             Введи email и пароль, которые ты указал при регистрации.
           </p>

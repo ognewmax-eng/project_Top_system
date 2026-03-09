@@ -82,10 +82,21 @@ export interface ApplicationData {
   shift: string;
   benefits: string[];
   attachments: string;
-  status: 'review' | 'approved' | 'rejected' | 'revision';
+  status: 'review' | 'approved' | 'rejected' | 'revision' | 'reserve';
   revisionComment: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface ShiftStats {
+  submitted: number;
+  approved: number;
+}
+
+export interface ApplicationStats {
+  total: number;
+  approved: number;
+  byShift: Record<string, ShiftStats>;
 }
 
 /* ─── Хелперы ─── */
@@ -205,7 +216,8 @@ export async function updateApplicationStatus(
   adminPassword: string,
   applicationDbId: number,
   status: string,
-  revisionComment?: string
+  revisionComment?: string,
+  fields?: Record<string, string>
 ): Promise<void> {
   const url = `${API_BASE}/update_application.php`;
   const res = await fetch(url, {
@@ -216,6 +228,7 @@ export async function updateApplicationStatus(
       application_id: applicationDbId,
       status,
       revision_comment: revisionComment || '',
+      ...(fields || {}),
     }),
   });
   const text = await res.text();
@@ -238,6 +251,38 @@ export async function submitRevision(data: Record<string, string>): Promise<void
   if (isNonJsonResponse(text)) return;
   const json = JSON.parse(text);
   if (!json.success) throw new Error(json.error || 'Ошибка обновления заявки');
+}
+
+/* ─── Публичная статистика ─── */
+
+/**
+ * Получить статистику по заявкам (подано/одобрено по сменам) — без авторизации.
+ */
+export async function getApplicationStats(): Promise<ApplicationStats> {
+  const fallback: ApplicationStats = {
+    total: 0,
+    approved: 0,
+    byShift: {
+      '1': { submitted: 0, approved: 0 },
+      '2': { submitted: 0, approved: 0 },
+      '3': { submitted: 0, approved: 0 },
+    },
+  };
+  try {
+    const url = `${API_BASE}/get_stats.php`;
+    const res = await fetch(url);
+    const text = await res.text();
+    if (isNonJsonResponse(text)) return fallback;
+    const json = JSON.parse(text);
+    if (!json.success) return fallback;
+    return {
+      total: json.total ?? 0,
+      approved: json.approved ?? 0,
+      byShift: json.byShift ?? fallback.byShift,
+    };
+  } catch {
+    return fallback;
+  }
 }
 
 /* ─── Совместимость: save_data.php (JSON-файл) ─── */
@@ -279,20 +324,31 @@ export async function uploadFiles(
   if (files.length === 0) return { success: true, results: [] };
   const useYandex = options && options.shift && options.fullName.trim().length > 0;
   const url = useYandex ? `${API_BASE}/upload_to_yandex.php` : `${API_BASE}/upload.php`;
-  const form = new FormData();
-  files.forEach((f) => form.append('files[]', f));
-  if (useYandex) {
-    form.append('shift', options!.shift);
-    form.append('fullName', options!.fullName.trim());
+
+  const allResults: Array<{ originalName: string; saved: boolean; path?: string; error?: string }> = [];
+
+  for (const f of files) {
+    const form = new FormData();
+    form.append('files[]', f);
+    if (useYandex) {
+      form.append('shift', options!.shift);
+      form.append('fullName', options!.fullName.trim());
+    }
+    const res = await fetch(url, { method: 'POST', body: form });
+    const text = await res.text();
+    if (isNonJsonResponse(text)) {
+      allResults.push({ originalName: f.name, saved: false });
+      continue;
+    }
+    const json = JSON.parse(text) as UploadResponse;
+    if (!res.ok) {
+      allResults.push({ originalName: f.name, saved: false, error: json.error || 'Ошибка загрузки' });
+      continue;
+    }
+    if (json.results) allResults.push(...json.results);
   }
-  const res = await fetch(url, { method: 'POST', body: form });
-  const text = await res.text();
-  if (isNonJsonResponse(text)) {
-    return { success: true, results: files.map((f) => ({ originalName: f.name, saved: false })) };
-  }
-  const json = JSON.parse(text) as UploadResponse;
-  if (!res.ok) throw new Error(json.error || 'Ошибка загрузки файлов');
-  return json;
+
+  return { success: allResults.every((r) => r.saved), results: allResults };
 }
 
 export function getFileUrl(path: string): string {

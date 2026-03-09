@@ -1,11 +1,14 @@
 import React from "react";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface SuccessModalProps {
   onClose: () => void;
   onCabinet: () => void;
+  applicationId?: string;
 }
 
-export function SuccessModal({ onClose, onCabinet }: SuccessModalProps) {
+export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModalProps) {
+  const mobile = useIsMobile();
   return (
     <div
       style={{
@@ -26,7 +29,7 @@ export function SuccessModal({ onClose, onCabinet }: SuccessModalProps) {
         style={{
           backgroundColor: "#fff",
           border: "2px solid #000",
-          boxShadow: "8px 8px 0px #000",
+          boxShadow: mobile ? "4px 4px 0px #000" : "8px 8px 0px #000",
           maxWidth: 480,
           width: "100%",
           overflow: "hidden",
@@ -35,7 +38,7 @@ export function SuccessModal({ onClose, onCabinet }: SuccessModalProps) {
         <div
           style={{
             backgroundColor: "#F8EDAD",
-            padding: "24px 32px",
+            padding: mobile ? "16px 20px" : "24px 32px",
             borderBottom: "2px solid #000",
             display: "flex",
             alignItems: "center",
@@ -67,7 +70,7 @@ export function SuccessModal({ onClose, onCabinet }: SuccessModalProps) {
           </button>
         </div>
 
-        <div style={{ padding: "32px" }}>
+        <div style={{ padding: mobile ? "20px 16px" : "32px" }}>
           <div style={{ textAlign: "center", marginBottom: 32 }}>
             <div
               style={{
@@ -96,7 +99,7 @@ export function SuccessModal({ onClose, onCabinet }: SuccessModalProps) {
               ОТЛИЧНО!
             </h3>
             <p style={{ fontSize: 15, color: "#555", lineHeight: 1.6, margin: 0 }}>
-              Твоя заявка успешно принята. Номер заявки: <strong>#2025-4821</strong>. Следи за статусом в личном кабинете.
+              Твоя заявка успешно принята. Номер заявки: <strong>#{applicationId || "—"}</strong>. Следи за статусом в личном кабинете.
             </p>
           </div>
 

@@ -48,7 +48,7 @@ try {
             shift            VARCHAR(5)   DEFAULT '',
             benefits         TEXT,
             attachments      TEXT,
-            status           ENUM('review','approved','rejected','revision') DEFAULT 'review',
+            status           ENUM('review','approved','rejected','revision','reserve') DEFAULT 'review',
             revision_comment TEXT,
             created_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at       TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -56,9 +56,15 @@ try {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     ");
 
-    echo '<h2 style="color:green">Таблицы успешно созданы!</h2>';
+    $pdo->exec("
+        ALTER TABLE applications
+        MODIFY COLUMN status ENUM('review','approved','rejected','revision','reserve') DEFAULT 'review'
+    ");
+
+    echo '<h2 style="color:green">Таблицы успешно созданы / обновлены!</h2>';
     echo '<p><strong>users</strong> — пользователи (логин/пароль)</p>';
     echo '<p><strong>applications</strong> — заявки участников</p>';
+    echo '<p>Колонка <code>status</code> обновлена: добавлен статус <strong>reserve</strong>.</p>';
     echo '<p style="color:#888">Этот файл можно удалить после выполнения.</p>';
 } catch (Exception $e) {
     echo '<h2 style="color:red">Ошибка</h2>';

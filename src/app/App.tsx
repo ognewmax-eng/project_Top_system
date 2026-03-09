@@ -8,7 +8,6 @@ import { PersonalCabinet } from "./components/PersonalCabinet";
 import { SuccessModal } from "./components/SuccessModal";
 import { LoginModal } from "./components/LoginModal";
 import { AdminPanel } from "./components/AdminPanel";
-import { Footer } from "./components/Footer";
 import { YandexOAuthPage } from "./components/YandexOAuthPage";
 
 export default function App() {
@@ -31,6 +30,7 @@ export default function App() {
 
   const handleFormSuccess = (data: Record<string, string>) => {
     setUserData(data);
+    localStorage.setItem("top_user", JSON.stringify(data));
     setShowSuccess(true);
   };
 
@@ -89,7 +89,6 @@ export default function App() {
           <HowItWorks />
           <EmployersSection />
           <RegistrationForm onSuccess={handleFormSuccess} />
-          <Footer />
         </>
       )}
 
@@ -97,6 +96,7 @@ export default function App() {
         <SuccessModal
           onClose={() => setShowSuccess(false)}
           onCabinet={handleOpenCabinet}
+          applicationId={userData?.id?.replace(/^app_/, "") || userData?.applicationId || ""}
         />
       )}
 

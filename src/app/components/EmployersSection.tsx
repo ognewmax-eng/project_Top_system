@@ -1,4 +1,7 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { getApplicationStats } from "@/api/apiService";
+import type { ShiftStats } from "@/api/apiService";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 const SHIFTS = [
   {
@@ -27,37 +30,27 @@ const SHIFTS = [
   },
 ];
 
-type ShiftStats = { submitted: number; approved: number };
-
-function getApplicationsCounts(): {
-  total: number;
-  approved: number;
-  byShift: Record<string, ShiftStats>;
-} {
-  try {
-    const raw = localStorage.getItem("top_applications");
-    const apps = raw ? JSON.parse(raw) : [];
-    const byShift: Record<string, ShiftStats> = { "1": { submitted: 0, approved: 0 }, "2": { submitted: 0, approved: 0 }, "3": { submitted: 0, approved: 0 } };
-    for (const a of apps as { shift?: string; status?: string }[]) {
-      const sid = a.shift && ["1", "2", "3"].includes(String(a.shift)) ? String(a.shift) : "1";
-      byShift[sid].submitted += 1;
-      if (a.status === "approved") byShift[sid].approved += 1;
-    }
-    const approved = apps.filter((a: { status?: string }) => a.status === "approved").length;
-    return { total: apps.length, approved, byShift };
-  } catch {
-    return {
-      total: 0,
-      approved: 0,
-      byShift: { "1": { submitted: 0, approved: 0 }, "2": { submitted: 0, approved: 0 }, "3": { submitted: 0, approved: 0 } },
-    };
-  }
-}
-
 const TOTAL_SPOTS_ALL = 368;
 
+const emptyByShift: Record<string, ShiftStats> = {
+  "1": { submitted: 0, approved: 0 },
+  "2": { submitted: 0, approved: 0 },
+  "3": { submitted: 0, approved: 0 },
+};
+
 export function EmployersSection() {
-  const { total: totalApplications, approved: totalApproved, byShift } = getApplicationsCounts();
+  const mobile = useIsMobile();
+  const [totalApplications, setTotalApplications] = useState(0);
+  const [totalApproved, setTotalApproved] = useState(0);
+  const [byShift, setByShift] = useState<Record<string, ShiftStats>>(emptyByShift);
+
+  useEffect(() => {
+    getApplicationStats().then((stats) => {
+      setTotalApplications(stats.total);
+      setTotalApproved(stats.approved);
+      setByShift(stats.byShift);
+    });
+  }, []);
 
   const totalFree = Math.max(0, TOTAL_SPOTS_ALL - totalApproved);
 
@@ -70,17 +63,18 @@ export function EmployersSection() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "80px 24px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: mobile ? "48px 20px" : "80px 24px" }}>
 
         {/* Title row */}
         <div
           style={{
             display: "flex",
-            alignItems: "flex-end",
+            alignItems: mobile ? "flex-start" : "flex-end",
             justifyContent: "space-between",
-            marginBottom: 48,
+            marginBottom: mobile ? 28 : 48,
             flexWrap: "wrap",
-            gap: 24,
+            gap: mobile ? 16 : 24,
+            flexDirection: mobile ? "column" : "row",
           }}
         >
           <div>
@@ -101,7 +95,7 @@ export function EmployersSection() {
             </span>
             <h2
               style={{
-                fontSize: "clamp(36px, 5vw, 60px)",
+                fontSize: mobile ? "clamp(28px, 8vw, 40px)" : "clamp(36px, 5vw, 60px)",
                 fontWeight: 900,
                 color: "#000",
                 lineHeight: 1,
@@ -113,20 +107,20 @@ export function EmployersSection() {
             </h2>
           </div>
 
-          {/* Total counter */}
           <div
             style={{
               border: "2px solid #000",
-              boxShadow: "5px 5px 0px #000",
-              padding: "20px 32px",
+              boxShadow: mobile ? "3px 3px 0px #000" : "5px 5px 0px #000",
+              padding: mobile ? "14px 20px" : "20px 32px",
               backgroundColor: "#F8EDAD",
               textAlign: "center",
+              width: mobile ? "100%" : undefined,
             }}
           >
             <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: "1px", color: "rgba(0,0,0,0.5)", marginBottom: 4 }}>
               ВСЕГО СВОБОДНО
             </div>
-            <div style={{ fontSize: 52, fontWeight: 900, lineHeight: 1, color: "#000" }}>
+            <div style={{ fontSize: mobile ? 40 : 52, fontWeight: 900, lineHeight: 1, color: "#000" }}>
               {totalFree}
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#555", marginTop: 4 }}>
@@ -139,9 +133,9 @@ export function EmployersSection() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
+            gridTemplateColumns: mobile ? "1fr" : "repeat(3, 1fr)",
             border: "2px solid #000",
-            boxShadow: "6px 6px 0px #000",
+            boxShadow: mobile ? "4px 4px 0px #000" : "6px 6px 0px #000",
           }}
         >
           {SHIFTS.map((shift, i) => {
@@ -156,14 +150,14 @@ export function EmployersSection() {
                 key={shift.id}
                 style={{
                   backgroundColor: shift.color,
-                  borderRight: !isLast ? "2px solid #000" : "none",
-                  padding: "36px 28px",
+                  borderRight: !mobile && !isLast ? "2px solid #000" : "none",
+                  borderBottom: mobile && !isLast ? "2px solid #000" : "none",
+                  padding: mobile ? "28px 20px" : "36px 28px",
                   display: "flex",
                   flexDirection: "column",
                   gap: 0,
                 }}
               >
-                {/* Shift label */}
                 <div
                   style={{
                     display: "inline-block",
@@ -180,10 +174,9 @@ export function EmployersSection() {
                   {shift.label}
                 </div>
 
-                {/* Free spots number */}
                 <div
                   style={{
-                    fontSize: 72,
+                    fontSize: mobile ? 52 : 72,
                     fontWeight: 900,
                     color: shift.id === 3 ? "#F8EDAD" : "#000",
                     lineHeight: 1,
@@ -215,7 +208,6 @@ export function EmployersSection() {
                   Подано: {stats.submitted} · Одобрено: {stats.approved}
                 </div>
 
-                {/* Progress bar */}
                 <div style={{ marginBottom: 20 }}>
                   <div
                     style={{
@@ -248,7 +240,6 @@ export function EmployersSection() {
                   </div>
                 </div>
 
-                {/* Dates */}
                 <div
                   style={{
                     borderTop: `2px solid ${shift.id === 3 ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"}`,
@@ -287,6 +278,7 @@ export function EmployersSection() {
             padding: "12px 16px",
             border: "2px solid #000",
             backgroundColor: "#f5f5f5",
+            flexDirection: mobile ? "column" : "row",
           }}
         >
           <span style={{ fontSize: 13, fontWeight: 700, color: "#555", display: "flex", alignItems: "center", gap: 8 }}>

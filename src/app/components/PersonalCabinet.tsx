@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { uploadFiles, getFileUrl, getMyApplication, submitRevision } from "@/api/apiService";
 import type { ApplicationData } from "@/api/apiService";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface PersonalCabinetProps {
   onBack: () => void;
@@ -33,6 +34,12 @@ const statusConfig: Record<string, { label: string; color: string; textColor: st
     textColor: "#fff",
     desc: "К сожалению, ваша заявка не прошла проверку. Свяжитесь с куратором для уточнения причин.",
   },
+  reserve: {
+    label: "В РЕЗЕРВЕ",
+    color: "#6366F1",
+    textColor: "#fff",
+    desc: "Ваша заявка находится в резерве. В случае освобождения мест, ваша заявка будет одобрена.",
+  },
 };
 
 const benefitLabels: Record<string, string> = {
@@ -61,6 +68,7 @@ function formatCreatedAt(createdAt: string | undefined): string {
 }
 
 export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabinetProps) {
+  const mobile = useIsMobile();
   const [application, setApplication] = useState<ApplicationData | null>(null);
   const [appLoading, setAppLoading] = useState(true);
 
@@ -81,7 +89,7 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
   }, []);
 
   const currentStatus = application?.status ?? "review";
-  const status = statusConfig[currentStatus];
+  const status = statusConfig[currentStatus] ?? statusConfig.review;
 
   const [editForm, setEditForm] = useState<Record<string, string>>(() => ({ ...(userData || {}) } as Record<string, string>));
   const [revisionFiles, setRevisionFiles] = useState<File[]>([]);
@@ -94,10 +102,16 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
   const registrationDate = formatCreatedAt(application?.createdAt);
 
   const timelineSteps = useMemo(() => {
+    const decided = ["revision", "approved", "rejected", "reserve"].includes(currentStatus);
+    const decisionLabel = currentStatus === "revision" ? "На доработке"
+      : currentStatus === "approved" ? "Одобрена"
+      : currentStatus === "rejected" ? "Отклонена"
+      : currentStatus === "reserve" ? "В резерве"
+      : "Решение";
     const steps = [
       { label: "Заявка создана", date: registrationDate, done: true, active: false },
       { label: "На проверке", date: registrationDate, done: currentStatus !== "review", active: currentStatus === "review" },
-      { label: currentStatus === "revision" ? "На доработке" : currentStatus === "approved" ? "Одобрена" : currentStatus === "rejected" ? "Отклонена" : "Одобрена / Отклонена", date: ["revision", "approved", "rejected"].includes(currentStatus) ? registrationDate : "—", done: ["revision", "approved", "rejected"].includes(currentStatus), active: currentStatus === "revision" },
+      { label: decisionLabel, date: decided ? registrationDate : "—", done: decided, active: currentStatus === "revision" || currentStatus === "reserve" },
       { label: "Направление выдано", date: "—", done: false, active: false },
       { label: "Трудоустроен", date: "—", done: false, active: false },
     ];
@@ -114,29 +128,29 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
 
   return (
     <div style={{ backgroundColor: "#fff", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ backgroundColor: "#F8EDAD", borderBottom: "2px solid #000", padding: "32px 24px" }}>
+      <div style={{ backgroundColor: "#F8EDAD", borderBottom: "2px solid #000", padding: mobile ? "20px 16px" : "32px 24px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <button
             onClick={onBack}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", border: "2px solid #000", backgroundColor: "transparent", color: "#000", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", marginBottom: 24, fontFamily: "'Inter', sans-serif" }}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", border: "2px solid #000", backgroundColor: "transparent", color: "#000", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", marginBottom: mobile ? 16 : 24, fontFamily: "'Inter', sans-serif" }}
           >
             ← НАЗАД НА ГЛАВНУЮ
           </button>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: mobile ? "flex-start" : "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, flexDirection: mobile ? "column" : "row" }}>
             <div>
               <div style={{ color: "rgba(0,0,0,0.5)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>ЛИЧНЫЙ КАБИНЕТ</div>
-              <h1 style={{ fontSize: 36, fontWeight: 900, color: "#000", margin: 0, lineHeight: 1 }}>{name}</h1>
+              <h1 style={{ fontSize: mobile ? 24 : 36, fontWeight: 900, color: "#000", margin: 0, lineHeight: 1 }}>{name}</h1>
             </div>
-            <div style={{ backgroundColor: status.color, border: "2px solid #000", boxShadow: "4px 4px 0px #000", padding: "12px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ backgroundColor: status.color, border: "2px solid #000", boxShadow: "4px 4px 0px #000", padding: mobile ? "8px 16px" : "12px 24px", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: status.textColor }} />
-              <span style={{ fontWeight: 900, fontSize: 18, color: status.textColor, letterSpacing: "1px" }}>{status.label}</span>
+              <span style={{ fontWeight: 900, fontSize: mobile ? 14 : 18, color: status.textColor, letterSpacing: "1px" }}>{status.label}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 24px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: mobile ? "24px 16px" : "40px 24px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "2fr 1fr", gap: 24 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {revisionSuccess && (
               <div style={{ padding: "16px 24px", backgroundColor: "#DCFCE7", border: "2px solid #16A34A", fontWeight: 900, fontSize: 15, color: "#166534" }}>
@@ -189,7 +203,7 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                 <span style={{ fontWeight: 900, fontSize: 16, color: "#000" }}>ДАННЫЕ ЗАЯВКИ</span>
               </div>
               <div style={{ padding: "24px" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 16 }}>
                   {[
                     { label: "ФИО", value: application?.fullName || userData?.fullName || "—" },
                     { label: "ДАТА РОЖДЕНИЯ", value: (application?.birthDate || userData?.birthDate) ? new Date(application?.birthDate || userData?.birthDate || "").toLocaleDateString("ru-RU") : "—" },
@@ -216,7 +230,7 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                   <p style={{ fontSize: 13, color: "#555", marginBottom: 20 }}>
                     Внесите правки в поля ниже и при необходимости догрузите файлы. После нажатия «Отправить доработанную заявку» заявка снова попадёт на проверку.
                   </p>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 16, marginBottom: 20 }}>
                     {[
                       { key: "fullName", label: "ФИО", type: "text", placeholder: "Иванов Иван Иванович" },
                       { key: "birthDate", label: "Дата рождения", type: "date" },
@@ -229,7 +243,7 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                       { key: "phone", label: "Телефон", type: "tel", placeholder: "+7 (___) ___-__-__" },
                       { key: "email", label: "Email", type: "email", placeholder: "example@mail.ru" },
                     ].map((f) => (
-                      <div key={f.key} style={{ gridColumn: f.key === "address" ? "1 / -1" : undefined }}>
+                      <div key={f.key} style={{ gridColumn: !mobile && f.key === "address" ? "1 / -1" : undefined }}>
                         <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#666", marginBottom: 4 }}>{f.label}</label>
                         {f.type === "select" ? (
                           <select
@@ -407,8 +421,8 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>НУЖНА ПОМОЩЬ?</div>
               <p style={{ fontSize: 13, color: "#555", lineHeight: 1.5, marginBottom: 16 }}>Свяжитесь с куратором программы по телефону или email.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <a href="tel:88001234567" style={{ display: "block", padding: "10px 16px", border: "2px solid #000", backgroundColor: "#fff", fontWeight: 900, fontSize: 13, color: "#000", textDecoration: "none", textAlign: "center", boxShadow: "2px 2px 0px #000" }}>
-                  8 800 123-45-67
+                <a href="tel:83493837523" style={{ display: "block", padding: "10px 16px", border: "2px solid #000", backgroundColor: "#fff", fontWeight: 900, fontSize: 13, color: "#000", textDecoration: "none", textAlign: "center", boxShadow: "2px 2px 0px #000" }}>
+                  8 (3493) 83-75-23
                 </a>
                 <a href="mailto:help@trudovoelete.ru" style={{ display: "block", padding: "10px 16px", border: "2px solid #000", backgroundColor: "#F8EDAD", fontWeight: 900, fontSize: 12, color: "#000", textDecoration: "none", textAlign: "center", letterSpacing: "0.3px" }}>
                   НАПИСАТЬ КУРАТОРУ

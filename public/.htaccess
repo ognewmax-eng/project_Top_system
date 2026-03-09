@@ -1,9 +1,20 @@
-# SPA: для путей без реального файла (например /yandexouth) отдаём index.html
+# Проброс заголовка Authorization (Apache на shared-хостинге его «съедает»)
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /
+
+    # Передать Authorization в PHP
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # SPA: для путей без реального файла отдаём index.html
     RewriteRule ^index\.html$ - [L]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule . /index.html [L]
+</IfModule>
+
+# Дополнительный способ проброса Authorization (для CGI/FastCGI)
+<IfModule mod_setenvif.c>
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
 </IfModule>

@@ -89,9 +89,18 @@ try {
         'token'         => $token,
         'applicationId' => $appId,
         'user'          => [
-            'id'       => $userId,
-            'email'    => $email,
-            'fullName' => trim($data['fullName'] ?? ''),
+            'id'              => $userId,
+            'email'           => $email,
+            'fullName'        => trim($data['fullName'] ?? ''),
+            'birthDate'       => $data['birthDate'] ?? '',
+            'passportSeries'  => $data['passportSeries'] ?? '',
+            'passportNumber'  => $data['passportNumber'] ?? '',
+            'address'         => $data['address'] ?? '',
+            'school'          => $data['school'] ?? '',
+            'grade'           => $data['grade'] ?? '',
+            'phone'           => $data['phone'] ?? '',
+            'shift'           => $data['shift'] ?? '',
+            'benefits'        => $benefitsRaw,
         ],
     ]);
 } catch (PDOException $e) {

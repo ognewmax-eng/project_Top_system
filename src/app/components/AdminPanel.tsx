@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { getFileUrl, getAllApplications, updateApplicationStatus } from "@/api/apiService";
 import type { ApplicationData } from "@/api/apiService";
+import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface Application {
   id: string;
@@ -14,8 +15,9 @@ interface Application {
   grade: string;
   phone: string;
   email: string;
+  shift: string;
   benefits: string[];
-  status: "review" | "approved" | "rejected" | "revision";
+  status: "review" | "approved" | "rejected" | "revision" | "reserve";
   createdAt: string;
   revisionComment?: string;
   attachments?: string;
@@ -25,78 +27,83 @@ interface AdminPanelProps {
   onBack: () => void;
 }
 
+type StatusFilter = "all" | "review" | "revision" | "approved" | "rejected" | "reserve";
+type SortMode = "newest" | "oldest" | "name_asc" | "name_desc";
+
 const statusLabels: Record<string, { label: string; color: string; text: string }> = {
-  review:   { label: "НА ПРОВЕРКЕ",   color: "#ED7C30", text: "#000" },
+  review:   { label: "НА ПРОВЕРКЕ",  color: "#ED7C30", text: "#000" },
   revision: { label: "НА ДОРАБОТКЕ", color: "#F59E0B", text: "#000" },
-  approved: { label: "ОДОБРЕНО",      color: "#16A34A", text: "#fff" },
-  rejected: { label: "ОТКЛОНЕНО",     color: "#DC2626", text: "#fff" },
+  approved: { label: "ОДОБРЕНО",     color: "#16A34A", text: "#fff" },
+  rejected: { label: "ОТКЛОНЕНО",    color: "#DC2626", text: "#fff" },
+  reserve:  { label: "В РЕЗЕРВЕ",    color: "#6366F1", text: "#fff" },
 };
 
-function formatCreatedAt(createdAt: string): string {
-  if (!createdAt) return "—";
-  if (createdAt.includes("T") || createdAt.includes("-")) {
-    const d = new Date(createdAt);
-    return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
-  }
-  const match = createdAt.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-  if (match) {
-    const [, day, month, year] = match;
-    const d = new Date(Number(year), Number(month) - 1, Number(day));
-    return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
-  }
-  const d = new Date(createdAt);
-  return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+const benefitLabels: Record<string, string> = {
+  low_income: "Малоимущие", svo: "Дети участников СВО", orphan: "Дети-сироты",
+  disabled: "Дети-инвалиды", large_family: "Многодетные семьи", none: "Без льгот",
+};
+
+function formatDate(d: string): string {
+  if (!d) return "—";
+  const date = new Date(d);
+  return Number.isNaN(date.getTime()) ? d : date.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function toApplication(a: ApplicationData): Application {
   return {
-    id: a.id,
-    dbId: a.dbId,
-    fullName: a.fullName,
-    birthDate: a.birthDate,
-    passportSeries: a.passportSeries,
-    passportNumber: a.passportNumber,
-    address: a.address,
-    school: a.school,
-    grade: a.grade,
-    phone: a.phone,
-    email: a.email,
-    benefits: a.benefits,
-    status: a.status,
-    createdAt: a.createdAt,
-    revisionComment: a.revisionComment,
-    attachments: a.attachments,
+    id: a.id, dbId: a.dbId, fullName: a.fullName, birthDate: a.birthDate,
+    passportSeries: a.passportSeries, passportNumber: a.passportNumber,
+    address: a.address, school: a.school, grade: a.grade, phone: a.phone,
+    email: a.email, shift: a.shift || "", benefits: a.benefits, status: a.status,
+    createdAt: a.createdAt, revisionComment: a.revisionComment, attachments: a.attachments,
   };
 }
 
+const inputStyle: React.CSSProperties = {
+  width: "100%", padding: "10px 12px", border: "2px solid #000", fontSize: 14,
+  fontFamily: "'Inter', sans-serif", outline: "none", boxSizing: "border-box",
+};
+
+const btnStyle = (bg: string, color: string): React.CSSProperties => ({
+  padding: "10px 20px", border: "2px solid #000", backgroundColor: bg, color,
+  fontWeight: 900, fontSize: 12, cursor: "pointer", letterSpacing: "0.5px",
+  boxShadow: "3px 3px 0px #000", fontFamily: "'Inter', sans-serif", transition: "all 0.1s",
+});
+
 export function AdminPanel({ onBack }: AdminPanelProps) {
-  const [authed, setAuthed]           = useState(false);
-  const [adminPw, setAdminPw]         = useState("");
-  const [pwInput, setPwInput]         = useState("");
-  const [pwError, setPwError]         = useState(false);
-  const [showPw, setShowPw]           = useState(false);
-  const [apps, setApps]               = useState<Application[]>([]);
-  const [loading, setLoading]         = useState(false);
-  const [filterStatus, setFilterStatus] = useState<"all" | "review" | "revision" | "approved" | "rejected">("all");
-  const [expandedId, setExpandedId]   = useState<string | null>(null);
+  const mobile = useIsMobile();
+  const [authed, setAuthed] = useState(false);
+  const [adminPw, setAdminPw] = useState("");
+  const [pwInput, setPwInput] = useState("");
+  const [pwError, setPwError] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [apps, setApps] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterShift, setFilterShift] = useState<string>("all");
+  const [filterBenefit, setFilterBenefit] = useState<string>("all");
+  const [sortMode, setSortMode] = useState<SortMode>("newest");
+
+  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [revisionComment, setRevisionComment] = useState("");
   const [revisionTargetId, setRevisionTargetId] = useState<string | null>(null);
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<Record<string, string>>({});
+  const [editSaving, setEditSaving] = useState(false);
 
   const loadApps = async (pw: string) => {
     setLoading(true);
     try {
       const data = await getAllApplications(pw);
       setApps(data.map(toApplication));
-    } catch {
-      setApps([]);
-    } finally {
-      setLoading(false);
-    }
+    } catch { setApps([]); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    if (authed) loadApps(adminPw);
-  }, [authed]);
+  useEffect(() => { if (authed) loadApps(adminPw); }, [authed]);
 
   const handleLogin = async () => {
     setLoading(true);
@@ -106,62 +113,112 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       setAdminPw(pwInput);
       setAuthed(true);
       setPwError(false);
-    } catch {
-      setPwError(true);
-    } finally {
-      setLoading(false);
-    }
+    } catch { setPwError(true); }
+    finally { setLoading(false); }
   };
 
-  const handleUpdateStatus = async (id: string, dbId: number, status: "review" | "approved" | "rejected" | "revision", comment?: string) => {
+  const handleUpdateStatus = async (
+    id: string, dbId: number,
+    status: "review" | "approved" | "rejected" | "revision" | "reserve",
+    comment?: string
+  ) => {
     try {
       await updateApplicationStatus(adminPw, dbId, status, comment);
-      setApps((prev) =>
-        prev.map((a) =>
-          a.id === id
-            ? { ...a, status, ...(status === "revision" && comment !== undefined ? { revisionComment: comment } : status !== "revision" ? { revisionComment: "" } : {}) }
-            : a
-        )
-      );
-    } catch {
-      await loadApps(adminPw);
-    }
+      setApps((prev) => prev.map((a) =>
+        a.id === id
+          ? { ...a, status, revisionComment: status === "revision" && comment ? comment : status !== "revision" ? "" : a.revisionComment || "" }
+          : a
+      ));
+    } catch { await loadApps(adminPw); }
     setRevisionTargetId(null);
     setRevisionComment("");
   };
 
-  const filtered = filterStatus === "all" ? apps : apps.filter((a) => a.status === filterStatus);
-
-  const counts = {
-    all:      apps.length,
-    review:   apps.filter((a) => a.status === "review").length,
-    revision: apps.filter((a) => a.status === "revision").length,
-    approved: apps.filter((a) => a.status === "approved").length,
-    rejected: apps.filter((a) => a.status === "rejected").length,
+  const handleSaveEdit = async (app: Application) => {
+    setEditSaving(true);
+    try {
+      await updateApplicationStatus(adminPw, app.dbId, app.status, app.revisionComment, editForm);
+      setApps((prev) => prev.map((a) => a.id === app.id ? { ...a, ...editForm, benefits: editForm.benefits ? JSON.parse(editForm.benefits) : a.benefits } : a));
+      setEditingId(null);
+      setEditForm({});
+    } catch { await loadApps(adminPw); }
+    finally { setEditSaving(false); }
   };
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%",
-    padding: "12px 16px",
-    border: "2px solid #000",
-    backgroundColor: "#fff",
-    fontSize: 15,
-    fontFamily: "'Inter', sans-serif",
-    outline: "none",
-    boxSizing: "border-box",
+  const startEdit = (app: Application) => {
+    setEditingId(app.id);
+    setEditForm({
+      fullName: app.fullName, birthDate: app.birthDate, passportSeries: app.passportSeries,
+      passportNumber: app.passportNumber, address: app.address, school: app.school,
+      grade: app.grade, phone: app.phone, email: app.email, shift: app.shift,
+    });
   };
 
+  const filtered = useMemo(() => {
+    let list = [...apps];
+    if (filterStatus !== "all") list = list.filter((a) => a.status === filterStatus);
+    if (filterShift !== "all") list = list.filter((a) => a.shift === filterShift);
+    if (filterBenefit !== "all") {
+      if (filterBenefit === "has_benefit") list = list.filter((a) => a.benefits.length > 0 && !a.benefits.includes("none"));
+      else list = list.filter((a) => a.benefits.includes(filterBenefit));
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((a) =>
+        a.fullName.toLowerCase().includes(q) ||
+        a.email.toLowerCase().includes(q) ||
+        a.phone.includes(q) ||
+        a.id.includes(q)
+      );
+    }
+    list.sort((a, b) => {
+      switch (sortMode) {
+        case "newest": return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case "oldest": return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case "name_asc": return a.fullName.localeCompare(b.fullName, "ru");
+        case "name_desc": return b.fullName.localeCompare(a.fullName, "ru");
+        default: return 0;
+      }
+    });
+    return list;
+  }, [apps, filterStatus, filterShift, filterBenefit, searchQuery, sortMode]);
+
+  const counts: Record<string, number> = {
+    all: apps.length, review: 0, revision: 0, approved: 0, rejected: 0, reserve: 0,
+  };
+  apps.forEach((a) => { if (counts[a.status] !== undefined) counts[a.status]++; });
+
+  const exportToExcel = useCallback(async (mode: "all" | "approved" | "reserve" | "rejected") => {
+    const XLSX = await import("xlsx");
+    const titleMap: Record<string, string> = {
+      all: "Все заявки", approved: "Одобренные", reserve: "В резерве", rejected: "Отклонённые",
+    };
+    const rows = (mode === "all" ? apps : apps.filter((a) => a.status === mode))
+      .map((a) => ({
+        "ФИО": a.fullName || "—",
+        "ДАТА РОЖДЕНИЯ": formatDate(a.birthDate),
+        "ТЕЛЕФОН": a.phone || "—",
+        "АДРЕС": a.address || "—",
+        "ШКОЛА": a.school || "—",
+        "КЛАСС": a.grade ? `${a.grade} класс` : "—",
+        "СМЕНА": a.shift ? `${a.shift} смена` : "—",
+        "ЛЬГОТЫ": a.benefits?.length
+          ? a.benefits.map((b) => benefitLabels[b] || b).join(", ")
+          : "Без льгот",
+      }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const colWidths = [30, 16, 22, 40, 40, 12, 12, 30];
+    ws["!cols"] = colWidths.map((w) => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, titleMap[mode]);
+    XLSX.writeFile(wb, `Заявки_${titleMap[mode]}_${new Date().toLocaleDateString("ru-RU").replace(/\./g, "-")}.xlsx`);
+  }, [apps]);
+
+  /* ─── Login screen ─── */
   if (!authed) {
     return (
-      <div
-        style={{
-          minHeight: "100vh",
-          backgroundColor: "#fff",
-          fontFamily: "'Inter', sans-serif",
-          display: "flex",
-          flexDirection: "column",
-        }}
-      >
+      <div style={{ minHeight: "100vh", backgroundColor: "#fff", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column" }}>
         <div style={{ backgroundColor: "#000", borderBottom: "2px solid #000", padding: "20px 24px" }}>
           <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -175,7 +232,6 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             </button>
           </div>
         </div>
-
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
           <div style={{ width: "100%", maxWidth: 400, border: "2px solid #000", boxShadow: "8px 8px 0px #000" }}>
             <div style={{ backgroundColor: "#000", padding: "20px 28px", borderBottom: "2px solid #000" }}>
@@ -186,12 +242,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               <div style={{ marginBottom: 20 }}>
                 <label style={{ display: "block", fontSize: 13, fontWeight: 900, marginBottom: 8, letterSpacing: "0.5px" }}>ПАРОЛЬ АДМИНИСТРАТОРА</label>
                 <div style={{ position: "relative" }}>
-                  <input
-                    type={showPw ? "text" : "password"}
-                    value={pwInput}
+                  <input type={showPw ? "text" : "password"} value={pwInput}
                     onChange={(e) => { setPwInput(e.target.value); setPwError(false); }}
-                    placeholder="••••••••••"
-                    style={{ ...inputStyle, paddingRight: 48 }}
+                    placeholder="••••••••••" style={{ ...inputStyle, paddingRight: 48 }}
                     onKeyDown={(e) => e.key === "Enter" && handleLogin()}
                   />
                   <button onClick={() => setShowPw(!showPw)} style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 16, padding: 0 }}>
@@ -200,22 +253,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 </div>
                 {pwError && (
                   <div style={{ marginTop: 8, padding: "8px 12px", backgroundColor: "#FEF2F2", border: "2px solid #DC2626", fontSize: 13, fontWeight: 700, color: "#DC2626" }}>
-                    ⚠ Неверный пароль
+                    Неверный пароль
                   </div>
                 )}
               </div>
-              <button
-                onClick={handleLogin}
-                disabled={loading}
-                style={{
-                  width: "100%", padding: "14px", fontSize: 15, fontWeight: 900,
-                  color: "#fff", backgroundColor: "#000", border: "2px solid #000",
-                  boxShadow: "5px 5px 0px #ED7C30", cursor: loading ? "not-allowed" : "pointer",
-                  letterSpacing: "1px", transition: "all 0.1s", fontFamily: "'Inter', sans-serif",
-                }}
-                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translate(2px,2px)"; (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #ED7C30"; }}
-                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translate(0,0)"; (e.currentTarget as HTMLElement).style.boxShadow = "5px 5px 0px #ED7C30"; }}
-              >
+              <button onClick={handleLogin} disabled={loading}
+                style={{ width: "100%", padding: "14px", fontSize: 15, fontWeight: 900, color: "#fff", backgroundColor: "#000", border: "2px solid #000", boxShadow: "5px 5px 0px #ED7C30", cursor: loading ? "not-allowed" : "pointer", letterSpacing: "1px", fontFamily: "'Inter', sans-serif" }}>
                 {loading ? "ЗАГРУЗКА…" : "ВОЙТИ В ПАНЕЛЬ"}
               </button>
             </div>
@@ -225,64 +268,132 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     );
   }
 
+  /* ─── Main panel ─── */
   return (
     <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f5", fontFamily: "'Inter', sans-serif" }}>
 
-      <div style={{ backgroundColor: "#000", borderBottom: "2px solid #000", padding: "0 24px", position: "sticky", top: 0, zIndex: 100 }}>
-        <div style={{ maxWidth: 1400, margin: "0 auto", height: 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 32, height: 32, backgroundColor: "#ED7C30", border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#000", fontWeight: 900, fontSize: 10 }}>ТОП</span>
+      {/* Header */}
+      <div style={{ backgroundColor: "#000", borderBottom: "2px solid #000", padding: mobile ? "0 12px" : "0 24px", position: "sticky", top: 0, zIndex: 100 }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto", height: mobile ? 52 : 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: mobile ? 8 : 16, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: mobile ? 6 : 10, minWidth: 0 }}>
+              <div style={{ width: 28, height: 28, backgroundColor: "#ED7C30", border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ color: "#000", fontWeight: 900, fontSize: 9 }}>ТОП</span>
               </div>
-              <span style={{ color: "#fff", fontWeight: 900, fontSize: 15, letterSpacing: "0.5px" }}>ПАНЕЛЬ АДМИНИСТРАТОРА</span>
+              <span style={{ color: "#fff", fontWeight: 900, fontSize: mobile ? 12 : 15, letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
+                {mobile ? "АДМИН" : "ПАНЕЛЬ АДМИНИСТРАТОРА"}
+              </span>
             </div>
-            <div style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
-            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 700 }}>УПРАВЛЕНИЕ ЗАЯВКАМИ</span>
+            {!mobile && (
+              <>
+                <div style={{ width: 1, height: 24, backgroundColor: "rgba(255,255,255,0.2)" }} />
+                <span style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 700 }}>УПРАВЛЕНИЕ ЗАЯВКАМИ</span>
+              </>
+            )}
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button
-              onClick={() => loadApps(adminPw)}
-              style={{ padding: "6px 14px", border: "2px solid rgba(255,255,255,0.3)", backgroundColor: "transparent", color: "#fff", fontWeight: 900, fontSize: 12, cursor: "pointer", letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif" }}
-            >
-              ↻ ОБНОВИТЬ
+          <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+            <button onClick={() => loadApps(adminPw)} style={{ padding: mobile ? "4px 8px" : "6px 14px", border: "2px solid rgba(255,255,255,0.3)", backgroundColor: "transparent", color: "#fff", fontWeight: 900, fontSize: mobile ? 10 : 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+              ↻{mobile ? "" : " ОБНОВИТЬ"}
             </button>
-            <button
-              onClick={onBack}
-              style={{ padding: "6px 14px", border: "2px solid #ED7C30", backgroundColor: "transparent", color: "#ED7C30", fontWeight: 900, fontSize: 12, cursor: "pointer", letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif" }}
-            >
-              ← НА ГЛАВНУЮ
+            <button onClick={onBack} style={{ padding: mobile ? "4px 8px" : "6px 14px", border: "2px solid #ED7C30", backgroundColor: "transparent", color: "#ED7C30", fontWeight: 900, fontSize: mobile ? 10 : 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+              ←{mobile ? "" : " НА ГЛАВНУЮ"}
             </button>
           </div>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: "32px 24px" }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: mobile ? "16px 12px" : "32px 24px" }}>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginBottom: 32 }}>
-          {[
-            { key: "all",      label: "ВСЕГО ЗАЯВОК",    count: counts.all,      bg: "#fff",     border: "#000" },
-            { key: "review",   label: "НА ПРОВЕРКЕ",     count: counts.review,   bg: "#F8EDAD",  border: "#000" },
-            { key: "revision", label: "НА ДОРАБОТКЕ",   count: counts.revision, bg: "#FEF3C7",  border: "#F59E0B" },
-            { key: "approved", label: "ОДОБРЕНО",        count: counts.approved, bg: "#DCFCE7",  border: "#16A34A" },
-            { key: "rejected", label: "ОТКЛОНЕНО",      count: counts.rejected, bg: "#FEF2F2",  border: "#DC2626" },
-          ].map((stat) => (
-            <div
-              key={stat.key}
-              onClick={() => setFilterStatus(stat.key as typeof filterStatus)}
+        {/* Status counters */}
+        <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(3, 1fr)" : "repeat(6, 1fr)", gap: mobile ? 8 : 12, marginBottom: mobile ? 16 : 24 }}>
+          {([
+            { key: "all",      label: "ВСЕГО",        bg: "#fff",     border: "#000" },
+            { key: "review",   label: "НА ПРОВЕРКЕ",  bg: "#F8EDAD",  border: "#000" },
+            { key: "revision", label: "НА ДОРАБОТКЕ", bg: "#FEF3C7",  border: "#F59E0B" },
+            { key: "approved", label: "ОДОБРЕНО",     bg: "#DCFCE7",  border: "#16A34A" },
+            { key: "reserve",  label: "В РЕЗЕРВЕ",    bg: "#EEF2FF",  border: "#6366F1" },
+            { key: "rejected", label: "ОТКЛОНЕНО",    bg: "#FEF2F2",  border: "#DC2626" },
+          ] as const).map((stat) => (
+            <div key={stat.key} onClick={() => setFilterStatus(stat.key as StatusFilter)}
               style={{
                 border: `2px solid ${filterStatus === stat.key ? "#000" : stat.border}`,
-                boxShadow: filterStatus === stat.key ? "4px 4px 0px #000" : "2px 2px 0px #ccc",
-                backgroundColor: stat.bg, padding: "20px 24px", cursor: "pointer",
+                boxShadow: filterStatus === stat.key ? "3px 3px 0px #000" : "2px 2px 0px #ccc",
+                backgroundColor: stat.bg, padding: mobile ? "10px 12px" : "16px 20px", cursor: "pointer",
                 transform: filterStatus === stat.key ? "translate(-1px,-1px)" : "none", transition: "all 0.1s",
-              }}
-            >
-              <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: "1px", color: "#666", marginBottom: 8 }}>{stat.label}</div>
-              <div style={{ fontSize: 40, fontWeight: 900, lineHeight: 1, color: "#000" }}>{stat.count}</div>
+              }}>
+              <div style={{ fontSize: mobile ? 8 : 10, fontWeight: 900, letterSpacing: "1px", color: "#666", marginBottom: mobile ? 4 : 6 }}>{stat.label}</div>
+              <div style={{ fontSize: mobile ? 22 : 32, fontWeight: 900, lineHeight: 1, color: "#000" }}>{counts[stat.key] ?? 0}</div>
             </div>
           ))}
         </div>
 
+        {/* Filters bar */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 10 : 12, marginBottom: mobile ? 16 : 24, padding: mobile ? "12px" : "16px 20px", border: "2px solid #000", backgroundColor: "#fff" }}>
+          <div style={{ flex: mobile ? "1 1 100%" : "1 1 250px" }}>
+            <label style={{ display: "block", fontSize: 10, fontWeight: 900, letterSpacing: "1px", color: "#888", marginBottom: 4 }}>ПОИСК</label>
+            <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="ФИО, email, телефон…"
+              style={{ ...inputStyle, padding: "8px 12px", fontSize: 13 }} />
+          </div>
+          <div style={{ flex: mobile ? "1 1 45%" : "0 0 150px" }}>
+            <label style={{ display: "block", fontSize: 10, fontWeight: 900, letterSpacing: "1px", color: "#888", marginBottom: 4 }}>СМЕНА</label>
+            <select value={filterShift} onChange={(e) => setFilterShift(e.target.value)}
+              style={{ ...inputStyle, padding: "8px 12px", fontSize: 13, cursor: "pointer" }}>
+              <option value="all">Все смены</option>
+              <option value="1">1 смена</option>
+              <option value="2">2 смена</option>
+              <option value="3">3 смена</option>
+            </select>
+          </div>
+          <div style={{ flex: mobile ? "1 1 45%" : "0 0 200px" }}>
+            <label style={{ display: "block", fontSize: 10, fontWeight: 900, letterSpacing: "1px", color: "#888", marginBottom: 4 }}>ЛЬГОТЫ</label>
+            <select value={filterBenefit} onChange={(e) => setFilterBenefit(e.target.value)}
+              style={{ ...inputStyle, padding: "8px 12px", fontSize: 13, cursor: "pointer" }}>
+              <option value="all">Все категории</option>
+              <option value="has_benefit">С льготами</option>
+              <option value="low_income">Малоимущие</option>
+              <option value="svo">Дети участников СВО</option>
+              <option value="orphan">Дети-сироты</option>
+              <option value="disabled">Дети-инвалиды</option>
+              <option value="large_family">Многодетные семьи</option>
+              <option value="none">Без льгот</option>
+            </select>
+          </div>
+          <div style={{ flex: mobile ? "1 1 100%" : "0 0 180px" }}>
+            <label style={{ display: "block", fontSize: 10, fontWeight: 900, letterSpacing: "1px", color: "#888", marginBottom: 4 }}>СОРТИРОВКА</label>
+            <select value={sortMode} onChange={(e) => setSortMode(e.target.value as SortMode)}
+              style={{ ...inputStyle, padding: "8px 12px", fontSize: 13, cursor: "pointer" }}>
+              <option value="newest">Сначала новые</option>
+              <option value="oldest">Сначала старые</option>
+              <option value="name_asc">По имени (А-Я)</option>
+              <option value="name_desc">По имени (Я-А)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Export buttons */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 8 : 10, marginBottom: mobile ? 16 : 24 }}>
+          {!mobile && <span style={{ display: "flex", alignItems: "center", fontSize: 12, fontWeight: 900, color: "#555", letterSpacing: "0.5px", marginRight: 4 }}>ВЫГРУЗКА В EXCEL:</span>}
+          {([
+            { mode: "all",      label: "ВСЕ ЗАЯВКИ",   bg: "#fff",     color: "#000" },
+            { mode: "approved", label: "ОДОБРЕННЫЕ",    bg: "#DCFCE7",  color: "#166534" },
+            { mode: "reserve",  label: "В РЕЗЕРВЕ",     bg: "#EEF2FF",  color: "#4338CA" },
+            { mode: "rejected", label: "ОТКЛОНЁННЫЕ",   bg: "#FEF2F2",  color: "#991B1B" },
+          ] as const).map((btn) => (
+            <button key={btn.mode} onClick={() => exportToExcel(btn.mode)}
+              disabled={apps.length === 0}
+              style={{
+                padding: "8px 16px", border: "2px solid #000", backgroundColor: btn.bg, color: btn.color,
+                fontWeight: 900, fontSize: 11, cursor: apps.length === 0 ? "not-allowed" : "pointer",
+                letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif", boxShadow: "2px 2px 0px #000",
+                opacity: apps.length === 0 ? 0.4 : 1, transition: "all 0.1s", display: "flex", alignItems: "center", gap: 6,
+              }}>
+              <span style={{ fontSize: 14 }}>📊</span> {btn.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Application list */}
         <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000", backgroundColor: "#fff" }}>
           <div style={{ backgroundColor: "#000", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ color: "#fff", fontWeight: 900, fontSize: 15, letterSpacing: "0.5px" }}>
@@ -302,159 +413,226 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
               <div style={{ fontSize: 40, marginBottom: 16 }}>📭</div>
               <div style={{ fontWeight: 900, fontSize: 16 }}>ЗАЯВОК НЕТ</div>
               <div style={{ fontSize: 13, marginTop: 8 }}>
-                {apps.length === 0
-                  ? "Пока никто не подал заявку. Зарегистрированные участники появятся здесь."
-                  : "Нет заявок с таким статусом."}
+                {apps.length === 0 ? "Пока никто не подал заявку." : "Нет заявок по выбранным фильтрам."}
               </div>
             </div>
           ) : (
             <div>
               {filtered.map((app, idx) => {
-                const st = statusLabels[app.status];
+                const st = statusLabels[app.status] || statusLabels.review;
                 const isExpanded = expandedId === app.id;
+                const isEditing = editingId === app.id;
                 const isLast = idx === filtered.length - 1;
+                const shiftLabel = app.shift ? `${app.shift} смена` : "—";
 
                 return (
                   <div key={app.id} style={{ borderBottom: !isLast ? "2px solid #000" : "none" }}>
+                    {/* Row header */}
                     <div
                       style={{
-                        padding: "18px 24px", display: "flex", alignItems: "center", gap: 16,
-                        cursor: "pointer", backgroundColor: isExpanded ? "#fafafa" : "#fff", transition: "background 0.1s",
+                        padding: mobile ? "12px" : "16px 24px",
+                        display: "flex",
+                        alignItems: mobile ? "flex-start" : "center",
+                        flexDirection: mobile ? "column" : "row",
+                        gap: mobile ? 8 : 14,
+                        cursor: "pointer",
+                        backgroundColor: isExpanded ? "#fafafa" : "#fff",
+                        transition: "background 0.1s",
                       }}
-                      onClick={() => setExpandedId(isExpanded ? null : app.id)}
+                      onClick={() => { setExpandedId(isExpanded ? null : app.id); if (isEditing && !isExpanded) { setEditingId(null); setEditForm({}); } }}
                     >
-                      <div style={{ fontSize: 13, fontWeight: 900, color: "#aaa", width: 32, flexShrink: 0 }}>#{idx + 1}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 900, fontSize: 15, color: "#000", marginBottom: 2 }}>{app.fullName || "—"}</div>
-                        <div style={{ fontSize: 12, color: "#888", fontWeight: 700 }}>{app.email} · {app.phone}</div>
-                      </div>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#555", flexShrink: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                        <span>{app.school || "—"}</span>
-                        <span style={{ color: "#aaa" }}>{app.grade ? `${app.grade} класс` : ""}</span>
-                      </div>
-                      <div style={{ fontSize: 11, color: "#aaa", fontWeight: 700, flexShrink: 0 }}>{formatCreatedAt(app.createdAt)}</div>
-                      <div style={{ backgroundColor: st.color, border: "2px solid #000", padding: "4px 12px", fontSize: 11, fontWeight: 900, color: st.text, letterSpacing: "0.5px", flexShrink: 0, whiteSpace: "nowrap" }}>
-                        {st.label}
-                      </div>
-                      <div style={{ fontSize: 14, color: "#aaa", flexShrink: 0, transition: "transform 0.2s", transform: isExpanded ? "rotate(180deg)" : "none" }}>▼</div>
+                      {mobile ? (
+                        <>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                              <span style={{ fontSize: 11, fontWeight: 900, color: "#aaa" }}>#{idx + 1}</span>
+                              <span style={{ fontWeight: 900, fontSize: 14, color: "#000", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{app.fullName || "—"}</span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                              <div style={{ backgroundColor: st.color, border: "2px solid #000", padding: "2px 8px", fontSize: 9, fontWeight: 900, color: st.text, letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
+                                {st.label}
+                              </div>
+                              <div style={{ fontSize: 12, color: "#aaa", transition: "transform 0.2s", transform: isExpanded ? "rotate(180deg)" : "none" }}>▼</div>
+                            </div>
+                          </div>
+                          <div style={{ fontSize: 11, color: "#888", fontWeight: 700 }}>
+                            {shiftLabel} · {formatDate(app.createdAt)}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div style={{ fontSize: 12, fontWeight: 900, color: "#aaa", width: 28, flexShrink: 0 }}>#{idx + 1}</div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 900, fontSize: 14, color: "#000", marginBottom: 2 }}>{app.fullName || "—"}</div>
+                            <div style={{ fontSize: 11, color: "#888", fontWeight: 700 }}>{app.email} · {app.phone}</div>
+                          </div>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", flexShrink: 0, textAlign: "right" }}>
+                            <div>{app.school || "—"}</div>
+                            <div style={{ color: "#aaa" }}>{app.grade ? `${app.grade} кл.` : ""} · {shiftLabel}</div>
+                          </div>
+                          <div style={{ fontSize: 11, color: "#aaa", fontWeight: 700, flexShrink: 0 }}>{formatDate(app.createdAt)}</div>
+                          <div style={{ backgroundColor: st.color, border: "2px solid #000", padding: "3px 10px", fontSize: 10, fontWeight: 900, color: st.text, letterSpacing: "0.5px", flexShrink: 0, whiteSpace: "nowrap" }}>
+                            {st.label}
+                          </div>
+                          <div style={{ fontSize: 13, color: "#aaa", flexShrink: 0, transition: "transform 0.2s", transform: isExpanded ? "rotate(180deg)" : "none" }}>▼</div>
+                        </>
+                      )}
                     </div>
 
+                    {/* Expanded details */}
                     {isExpanded && (
-                      <div style={{ backgroundColor: "#fafafa", borderTop: "2px dashed #ccc", padding: "24px" }}>
-                        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 20, marginBottom: 24 }}>
-                          {[
-                            { label: "ФИО",              value: app.fullName },
-                            { label: "ДАТА РОЖДЕНИЯ",    value: app.birthDate ? new Date(app.birthDate).toLocaleDateString("ru-RU") : "—" },
-                            { label: "ПАСПОРТ",          value: `${app.passportSeries} ${app.passportNumber}` },
-                            { label: "ТЕЛЕФОН",          value: app.phone },
-                            { label: "EMAIL",            value: app.email },
-                            { label: "АДРЕС",            value: app.address },
-                            { label: "ШКОЛА",            value: app.school },
-                            { label: "КЛАСС",            value: app.grade ? `${app.grade} класс` : "—" },
-                            { label: "ЛЬГОТЫ",           value: app.benefits?.length ? app.benefits.join(", ") : "БЕЗ ЛЬГОТ" },
-                          ].map((f) => (
-                            <div key={f.label}>
-                              <div style={{ fontSize: 11, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 4 }}>{f.label}</div>
-                              <div style={{ fontSize: 14, fontWeight: 700, color: "#000" }}>{f.value || "—"}</div>
+                      <div style={{ backgroundColor: "#fafafa", borderTop: "2px dashed #ccc", padding: mobile ? "16px 12px" : "24px" }}>
+
+                        {/* Data grid (view or edit) */}
+                        <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(3, 1fr)", gap: mobile ? 12 : 16, marginBottom: mobile ? 16 : 24 }}>
+                          {([
+                            { key: "fullName",       label: "ФИО",            value: app.fullName, wide: false },
+                            { key: "birthDate",      label: "ДАТА РОЖДЕНИЯ",  value: formatDate(app.birthDate), wide: false },
+                            { key: "passportSeries", label: "СЕРИЯ ПАСПОРТА", value: app.passportSeries, wide: false },
+                            { key: "passportNumber", label: "НОМЕР ПАСПОРТА", value: app.passportNumber, wide: false },
+                            { key: "phone",          label: "ТЕЛЕФОН",        value: app.phone, wide: false },
+                            { key: "email",          label: "EMAIL",          value: app.email, wide: false },
+                            { key: "address",        label: "АДРЕС",          value: app.address, wide: true },
+                            { key: "school",         label: "ШКОЛА",          value: app.school, wide: false },
+                            { key: "grade",          label: "КЛАСС",          value: app.grade ? `${app.grade} класс` : "—", wide: false },
+                            { key: "shift",          label: "СМЕНА",          value: shiftLabel, wide: false },
+                          ] as const).map((f) => (
+                            <div key={f.key} style={{ gridColumn: !mobile && f.wide ? "1 / -1" : undefined }}>
+                              <div style={{ fontSize: 10, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 4 }}>{f.label}</div>
+                              {isEditing ? (
+                                f.key === "grade" ? (
+                                  <select value={editForm[f.key] || ""} onChange={(e) => setEditForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                                    style={{ ...inputStyle, padding: "8px 10px", fontSize: 13 }} onClick={(e) => e.stopPropagation()}>
+                                    <option value="">—</option>
+                                    {[6,7,8,9,10,11].map((g) => <option key={g} value={g}>{g} класс</option>)}
+                                  </select>
+                                ) : f.key === "shift" ? (
+                                  <select value={editForm[f.key] || ""} onChange={(e) => setEditForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                                    style={{ ...inputStyle, padding: "8px 10px", fontSize: 13 }} onClick={(e) => e.stopPropagation()}>
+                                    <option value="">—</option>
+                                    <option value="1">1 смена</option>
+                                    <option value="2">2 смена</option>
+                                    <option value="3">3 смена</option>
+                                  </select>
+                                ) : f.key === "birthDate" ? (
+                                  <input type="date" value={editForm[f.key] || ""} onChange={(e) => setEditForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                                    style={{ ...inputStyle, padding: "8px 10px", fontSize: 13 }} onClick={(e) => e.stopPropagation()} />
+                                ) : (
+                                  <input type="text" value={editForm[f.key] || ""} onChange={(e) => setEditForm((p) => ({ ...p, [f.key]: e.target.value }))}
+                                    style={{ ...inputStyle, padding: "8px 10px", fontSize: 13 }} onClick={(e) => e.stopPropagation()} />
+                                )
+                              ) : (
+                                <div style={{ fontSize: 14, fontWeight: 700, color: "#000" }}>{f.value || "—"}</div>
+                              )}
                             </div>
                           ))}
+                          <div>
+                            <div style={{ fontSize: 10, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 4 }}>ЛЬГОТЫ</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "#000" }}>
+                              {app.benefits?.length ? app.benefits.map((b) => benefitLabels[b] || b).join(", ") : "Без льгот"}
+                            </div>
+                          </div>
                         </div>
 
+                        {/* Edit save/cancel */}
+                        {isEditing && (
+                          <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
+                            <button onClick={(e) => { e.stopPropagation(); handleSaveEdit(app); }} disabled={editSaving}
+                              style={{ ...btnStyle("#16A34A", "#fff"), opacity: editSaving ? 0.6 : 1 }}>
+                              {editSaving ? "СОХРАНЕНИЕ…" : "СОХРАНИТЬ ИЗМЕНЕНИЯ"}
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setEditingId(null); setEditForm({}); }}
+                              style={{ padding: "10px 20px", border: "2px solid #999", backgroundColor: "#fff", color: "#555", fontWeight: 900, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                              ОТМЕНА
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Revision comment */}
                         {app.revisionComment && (
                           <div style={{ marginBottom: 24, padding: "12px 16px", backgroundColor: "#FEF3C7", border: "2px solid #F59E0B" }}>
-                            <div style={{ fontSize: 11, fontWeight: 900, color: "#92400E", letterSpacing: "0.5px", marginBottom: 6 }}>КОММЕНТАРИЙ ДЛЯ ЗАЯВИТЕЛЯ</div>
+                            <div style={{ fontSize: 10, fontWeight: 900, color: "#92400E", letterSpacing: "0.5px", marginBottom: 6 }}>КОММЕНТАРИЙ ДЛЯ ЗАЯВИТЕЛЯ</div>
                             <div style={{ fontSize: 14, fontWeight: 700, color: "#000", whiteSpace: "pre-wrap" }}>{app.revisionComment}</div>
                           </div>
                         )}
 
+                        {/* Files */}
                         {(() => {
                           let paths: string[] = [];
-                          try {
-                            if (app.attachments) {
-                              const parsed = JSON.parse(app.attachments);
-                              if (Array.isArray(parsed)) paths = parsed.filter((p): p is string => typeof p === "string" && p.length > 0);
-                            }
-                          } catch { /* ignore */ }
+                          try { if (app.attachments) { const p = JSON.parse(app.attachments); if (Array.isArray(p)) paths = p.filter((x): x is string => typeof x === "string" && x.length > 0); } } catch {}
                           return paths.length > 0 ? (
                             <div style={{ marginBottom: 24, padding: "16px 20px", backgroundColor: "#fff", border: "2px solid #000" }}>
-                              <div style={{ fontSize: 11, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 12 }}>ФАЙЛЫ ЗАЯВКИ</div>
+                              <div style={{ fontSize: 10, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 10 }}>ФАЙЛЫ ЗАЯВКИ ({paths.length})</div>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                {paths.map((path, i) => {
-                                  const url = getFileUrl(path);
-                                  const name = path.split("/").pop() || path || `Файл ${i + 1}`;
-                                  return (
-                                    <a key={`${app.id}-${i}-${path}`} href={url} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                                      style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", border: "2px solid #000", backgroundColor: "#F8EDAD", color: "#000", fontSize: 13, fontWeight: 700, textDecoration: "none", fontFamily: "'Inter', sans-serif" }}>
-                                      <span style={{ fontSize: 14 }}>📎</span>
-                                      {name}
-                                    </a>
-                                  );
-                                })}
+                                {paths.map((path, i) => (
+                                  <a key={`${app.id}-${i}`} href={getFileUrl(path)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: "2px solid #000", backgroundColor: "#F8EDAD", color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", fontFamily: "'Inter', sans-serif" }}>
+                                    📎 {path.split("/").pop() || `Файл ${i + 1}`}
+                                  </a>
+                                ))}
                               </div>
                             </div>
                           ) : null;
                         })()}
 
-                        {app.status === "review" && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-start" }}>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "approved"); }}
-                              style={{ padding: "10px 24px", border: "2px solid #000", backgroundColor: "#16A34A", color: "#fff", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", boxShadow: "3px 3px 0px #000", fontFamily: "'Inter', sans-serif", transition: "all 0.1s" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translate(1px,1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "2px 2px 0px #000"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translate(0,0)"; (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #000"; }}
-                            >
+                        {/* Action buttons */}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 8 : 10, alignItems: "flex-start" }}>
+                          {!isEditing && (
+                            <button onClick={(e) => { e.stopPropagation(); startEdit(app); }}
+                              style={btnStyle("#fff", "#000")}>
+                              ✎ РЕДАКТИРОВАТЬ
+                            </button>
+                          )}
+
+                          {app.status !== "approved" && (
+                            <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "approved"); }}
+                              style={btnStyle("#16A34A", "#fff")}>
                               ✓ ОДОБРИТЬ
                             </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "rejected"); }}
-                              style={{ padding: "10px 24px", border: "2px solid #000", backgroundColor: "#DC2626", color: "#fff", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", boxShadow: "3px 3px 0px #000", fontFamily: "'Inter', sans-serif", transition: "all 0.1s" }}
-                              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "translate(1px,1px)"; (e.currentTarget as HTMLElement).style.boxShadow = "2px 2px 0px #000"; }}
-                              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "translate(0,0)"; (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #000"; }}
-                            >
+                          )}
+                          {app.status !== "reserve" && (
+                            <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "reserve"); }}
+                              style={btnStyle("#6366F1", "#fff")}>
+                              ⏸ В РЕЗЕРВ
+                            </button>
+                          )}
+                          {app.status !== "rejected" && (
+                            <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "rejected"); }}
+                              style={btnStyle("#DC2626", "#fff")}>
                               ✕ ОТКЛОНИТЬ
                             </button>
-                            {revisionTargetId === app.id ? (
-                              <div style={{ flexBasis: "100%", display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
-                                <textarea
-                                  value={revisionComment}
-                                  onChange={(e) => setRevisionComment(e.target.value)}
-                                  placeholder="Укажите, что нужно доработать в заявке..."
-                                  style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                                <div style={{ display: "flex", gap: 8 }}>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "revision", revisionComment || "Требуется доработка."); }}
-                                    style={{ padding: "8px 20px", border: "2px solid #000", backgroundColor: "#F59E0B", color: "#000", fontWeight: 900, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
-                                  >
-                                    ОТПРАВИТЬ НА ДОРАБОТКУ
-                                  </button>
-                                  <button
-                                    onClick={(e) => { e.stopPropagation(); setRevisionTargetId(null); setRevisionComment(""); }}
-                                    style={{ padding: "8px 20px", border: "2px solid #999", backgroundColor: "#fff", color: "#555", fontWeight: 900, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}
-                                  >
-                                    Отмена
-                                  </button>
-                                </div>
+                          )}
+                          {app.status !== "review" && (
+                            <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "review"); }}
+                              style={{ padding: "10px 20px", border: "2px solid #999", backgroundColor: "#fff", color: "#555", fontWeight: 900, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                              ↺ НА ПРОВЕРКУ
+                            </button>
+                          )}
+
+                          {revisionTargetId === app.id ? (
+                            <div style={{ flexBasis: "100%", display: "flex", flexDirection: "column", gap: 8, marginTop: 8 }}>
+                              <textarea value={revisionComment} onChange={(e) => setRevisionComment(e.target.value)}
+                                placeholder="Укажите, что нужно доработать в заявке..."
+                                style={{ ...inputStyle, minHeight: 80, resize: "vertical" }}
+                                onClick={(e) => e.stopPropagation()} />
+                              <div style={{ display: "flex", gap: 8 }}>
+                                <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "revision", revisionComment || "Требуется доработка."); }}
+                                  style={btnStyle("#F59E0B", "#000")}>
+                                  ОТПРАВИТЬ НА ДОРАБОТКУ
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setRevisionTargetId(null); setRevisionComment(""); }}
+                                  style={{ padding: "10px 20px", border: "2px solid #999", backgroundColor: "#fff", color: "#555", fontWeight: 900, fontSize: 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+                                  Отмена
+                                </button>
                               </div>
-                            ) : (
-                              <button
-                                onClick={(e) => { e.stopPropagation(); setRevisionTargetId(app.id); setRevisionComment(app.revisionComment || ""); }}
-                                style={{ padding: "10px 24px", border: "2px solid #000", backgroundColor: "#F59E0B", color: "#000", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", boxShadow: "3px 3px 0px #000", fontFamily: "'Inter', sans-serif" }}
-                              >
-                                ↩ ВЕРНУТЬ НА ДОРАБОТКУ
-                              </button>
-                            )}
-                          </div>
-                        )}
-                        {(app.status === "approved" || app.status === "rejected" || app.status === "revision") && (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "review"); }}
-                            style={{ padding: "8px 20px", border: "2px solid #999", backgroundColor: "#fff", color: "#555", fontWeight: 900, fontSize: 12, cursor: "pointer", letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif" }}
-                          >
-                            ↺ ВЕРНУТЬ НА ПРОВЕРКУ
-                          </button>
-                        )}
+                            </div>
+                          ) : app.status !== "revision" ? (
+                            <button onClick={(e) => { e.stopPropagation(); setRevisionTargetId(app.id); setRevisionComment(app.revisionComment || ""); }}
+                              style={btnStyle("#F59E0B", "#000")}>
+                              ↩ НА ДОРАБОТКУ
+                            </button>
+                          ) : null}
+                        </div>
                       </div>
                     )}
                   </div>
