@@ -1,5 +1,5 @@
 import React, { useState, useRef } from "react";
-import { saveApplication, uploadFiles } from "@/api/apiService";
+import { registerUser, uploadFiles } from "@/api/apiService";
 
 interface RegistrationFormProps {
   onSuccess: (userData: Record<string, string>) => void;
@@ -647,7 +647,6 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                   setSubmitting(true);
                   const payload = { ...form, benefits: JSON.stringify(selectedBenefits) };
                   try {
-                    // Сначала загружаем файлы (если есть)
                     let uploadedPaths: string[] = [];
                     if (fileList.length > 0) {
                       const uploadRes = await uploadFiles(fileList, {
@@ -658,16 +657,20 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                         uploadedPaths = uploadRes.results.filter((r) => r.saved && r.path).map((r) => r.path!);
                       }
                     }
-                    // Отправляем анкету на сервер (с путями файлов в payload при необходимости)
-                    await saveApplication({
+                    const res = await registerUser({
                       ...payload,
                       attachments: JSON.stringify(uploadedPaths),
                     });
-                    onSuccess({ ...payload, attachments: JSON.stringify(uploadedPaths) });
+                    const userData: Record<string, string> = { ...payload, attachments: JSON.stringify(uploadedPaths) };
+                    if (res.user) {
+                      Object.entries(res.user).forEach(([k, v]) => {
+                        if (v !== null && v !== undefined) userData[k] = String(v);
+                      });
+                    }
+                    onSuccess(userData);
                   } catch (err) {
                     const message = err instanceof Error ? err.message : "Ошибка отправки. Проверьте сеть или попробуйте позже.";
                     setSubmitError(message);
-                    // Не вызываем onSuccess при ошибке — модалка успеха только при успешной отправке на сервер
                   } finally {
                     setSubmitting(false);
                   }

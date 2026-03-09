@@ -1,8 +1,9 @@
 import React, { useState } from "react";
+import { loginUser } from "@/api/apiService";
 
 interface LoginModalProps {
   onClose: () => void;
-  onSuccess: () => void;
+  onSuccess: (user: Record<string, string>) => void;
 }
 
 export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
@@ -10,6 +11,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const inputStyle: React.CSSProperties = {
     width: "100%",
@@ -32,33 +34,27 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
     color: "#000",
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setError("");
     if (!email.trim() || !password.trim()) {
       setError("Заполни все поля");
       return;
     }
-    const raw = localStorage.getItem("top_user");
-    if (!raw) {
-      setError("Пользователь не найден. Сначала заполни форму регистрации.");
-      return;
-    }
-    let user: Record<string, string>;
+    setLoading(true);
     try {
-      user = JSON.parse(raw);
-    } catch {
-      setError("Ошибка данных. Попробуйте зарегистрироваться снова.");
-      return;
+      const res = await loginUser(email.trim(), password);
+      const userData: Record<string, string> = {};
+      if (res.user) {
+        Object.entries(res.user).forEach(([k, v]) => {
+          if (v !== null && v !== undefined) userData[k] = String(v);
+        });
+      }
+      onSuccess(userData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Ошибка входа");
+    } finally {
+      setLoading(false);
     }
-    if (user.email?.toLowerCase() !== email.trim().toLowerCase()) {
-      setError("Неверный email или пароль");
-      return;
-    }
-    if (user.password !== password) {
-      setError("Неверный email или пароль");
-      return;
-    }
-    onSuccess();
   };
 
   return (
@@ -194,16 +190,17 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
 
           <button
             onClick={handleLogin}
+            disabled={loading}
             style={{
               width: "100%",
               padding: "16px",
               fontSize: 16,
               fontWeight: 900,
               color: "#000",
-              backgroundColor: "#ED7C30",
+              backgroundColor: loading ? "#ccc" : "#ED7C30",
               border: "2px solid #000",
-              boxShadow: "5px 5px 0px #000",
-              cursor: "pointer",
+              boxShadow: loading ? "none" : "5px 5px 0px #000",
+              cursor: loading ? "not-allowed" : "pointer",
               letterSpacing: "1px",
               transition: "all 0.1s",
               fontFamily: "'Inter', sans-serif",
@@ -217,7 +214,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
               (e.currentTarget as HTMLElement).style.boxShadow = "5px 5px 0px #000";
             }}
           >
-            ВОЙТИ
+            {loading ? "ВХОД…" : "ВОЙТИ"}
           </button>
 
           <p style={{ fontSize: 12, color: "#888", marginTop: 16, textAlign: "center", lineHeight: 1.5 }}>

@@ -30,29 +30,7 @@ export default function App() {
   };
 
   const handleFormSuccess = (data: Record<string, string>) => {
-    // Сохраняем текущего пользователя для входа
-    localStorage.setItem("top_user", JSON.stringify(data));
     setUserData(data);
-
-    // Добавляем заявку в общий список для администратора
-    const raw = localStorage.getItem("top_applications");
-    let apps: Record<string, unknown>[];
-    try {
-      apps = raw ? JSON.parse(raw) : [];
-    } catch {
-      apps = [];
-    }
-    const { password: _pw, ...dataWithoutPassword } = data;
-    const newApp = {
-      ...dataWithoutPassword,
-      id: `app_${Date.now()}`,
-      status: "review",
-      benefits: data.benefits ? (() => { try { return JSON.parse(data.benefits); } catch { return []; } })() : [],
-      createdAt: new Date().toISOString(),
-    };
-    apps.push(newApp);
-    localStorage.setItem("top_applications", JSON.stringify(apps));
-
     setShowSuccess(true);
   };
 
@@ -72,17 +50,12 @@ export default function App() {
     }
   };
 
-  const handleLoginSuccess = () => {
-    try {
-      const raw = localStorage.getItem("top_user");
-      if (raw) setUserData(JSON.parse(raw));
-    } catch {
-      setUserData(null);
-    }
+  const handleLoginSuccess = (user: Record<string, string>) => {
+    setUserData(user);
+    localStorage.setItem("top_user", JSON.stringify(user));
     handleOpenCabinet();
   };
 
-  // Страница настройки OAuth для загрузки на Яндекс.Диск — только по прямой ссылке /yandexouth
   const pathname = typeof window !== "undefined" ? window.location.pathname : "";
   if (pathname === "/yandexouth") {
     return <YandexOAuthPage />;

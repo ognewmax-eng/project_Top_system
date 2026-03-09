@@ -1,6 +1,16 @@
 node_modules
+dist
+
 # OAuth-токен и учётные данные приложения Яндекс (не коммитить)
 public/api/.yandex_oauth_token
 public/api/.yandex_app_credentials
 .yandex_oauth_token
 .yandex_app_credentials
+
+# Настройки БД (не коммитить — содержат пароль)
+public/api/.db_credentials
+.db_credentials
+
+# Пароль администратора
+public/api/.admin_password
+.admin_password

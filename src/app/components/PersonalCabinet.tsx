@@ -1,23 +1,11 @@
-import React, { useMemo, useState, useRef } from "react";
-import { uploadFiles, getFileUrl } from "@/api/apiService";
+import React, { useMemo, useState, useRef, useEffect } from "react";
+import { uploadFiles, getFileUrl, getMyApplication, submitRevision } from "@/api/apiService";
+import type { ApplicationData } from "@/api/apiService";
 
 interface PersonalCabinetProps {
   onBack: () => void;
   userData: Record<string, string> | null;
-  /** Вызывается после успешной отправки доработанной заявки, чтобы обновить данные в App */
   onDataUpdate?: () => void;
-}
-
-/** Заявка из хранилища (то же, что в панели администратора) */
-interface StoredApplication {
-  id: string;
-  fullName?: string;
-  email?: string;
-  status: "review" | "approved" | "rejected" | "revision";
-  createdAt: string;
-  benefits?: string[];
-  revisionComment?: string;
-  [key: string]: unknown;
 }
 
 const statusConfig: Record<string, { label: string; color: string; textColor: string; desc: string }> = {
@@ -56,10 +44,9 @@ const benefitLabels: Record<string, string> = {
   none: "БЕЗ ЛЬГОТ",
 };
 
-/** Форматирует дату заявки для отображения. Поддерживает ISO и локальный формат DD.MM.YYYY. */
 function formatCreatedAt(createdAt: string | undefined): string {
   if (!createdAt) return new Date().toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
-  if (createdAt.includes("T")) {
+  if (createdAt.includes("T") || createdAt.includes("-")) {
     const d = new Date(createdAt);
     return Number.isNaN(d.getTime()) ? createdAt : d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
   }
@@ -73,28 +60,25 @@ function formatCreatedAt(createdAt: string | undefined): string {
   return Number.isNaN(fallback.getTime()) ? createdAt : fallback.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function getMyApplication(userData: Record<string, string> | null): StoredApplication | null {
-  if (!userData?.email) return null;
-  const raw = localStorage.getItem("top_applications");
-  if (!raw) return null;
-  let apps: StoredApplication[];
-  try {
-    apps = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-  const email = String(userData.email).trim().toLowerCase();
-  const mine = apps.filter(
-    (a) => a.email && String(a.email).trim().toLowerCase() === email
-  );
-  if (mine.length === 0) return null;
-  mine.sort((a, b) => (b.id || "").localeCompare(a.id || ""));
-  return mine[0];
-}
-
 export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabinetProps) {
-  const [dataVersion, setDataVersion] = useState(0);
-  const application = useMemo(() => getMyApplication(userData), [userData?.email, dataVersion]);
+  const [application, setApplication] = useState<ApplicationData | null>(null);
+  const [appLoading, setAppLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAppLoading(true);
+    getMyApplication()
+      .then((app) => {
+        if (!cancelled) setApplication(app);
+      })
+      .catch(() => {
+        if (!cancelled) setApplication(null);
+      })
+      .finally(() => {
+        if (!cancelled) setAppLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
 
   const currentStatus = application?.status ?? "review";
   const status = statusConfig[currentStatus];
@@ -120,141 +104,52 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
     return steps;
   }, [currentStatus, registrationDate]);
 
+  if (appLoading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif" }}>
+        <div style={{ fontWeight: 900, fontSize: 18, color: "#666" }}>ЗАГРУЗКА…</div>
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        backgroundColor: "#fff",
-        minHeight: "100vh",
-        fontFamily: "'Inter', sans-serif",
-      }}
-    >
-      {/* Cabinet header */}
-      <div
-        style={{
-          backgroundColor: "#F8EDAD",
-          borderBottom: "2px solid #000",
-          padding: "32px 24px",
-        }}
-      >
+    <div style={{ backgroundColor: "#fff", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
+      <div style={{ backgroundColor: "#F8EDAD", borderBottom: "2px solid #000", padding: "32px 24px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <button
             onClick={onBack}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "8px 16px",
-              border: "2px solid #000",
-              backgroundColor: "transparent",
-              color: "#000",
-              fontWeight: 900,
-              fontSize: 13,
-              cursor: "pointer",
-              letterSpacing: "0.5px",
-              marginBottom: 24,
-              fontFamily: "'Inter', sans-serif",
-            }}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", border: "2px solid #000", backgroundColor: "transparent", color: "#000", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", marginBottom: 24, fontFamily: "'Inter', sans-serif" }}
           >
             ← НАЗАД НА ГЛАВНУЮ
           </button>
-
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
-              <div style={{ color: "rgba(0,0,0,0.5)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
-                ЛИЧНЫЙ КАБИНЕТ
-              </div>
-              <h1
-                style={{
-                  fontSize: 36,
-                  fontWeight: 900,
-                  color: "#000",
-                  margin: 0,
-                  lineHeight: 1,
-                }}
-              >
-                {name}
-              </h1>
+              <div style={{ color: "rgba(0,0,0,0.5)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>ЛИЧНЫЙ КАБИНЕТ</div>
+              <h1 style={{ fontSize: 36, fontWeight: 900, color: "#000", margin: 0, lineHeight: 1 }}>{name}</h1>
             </div>
-
-            <div
-              style={{
-                backgroundColor: status.color,
-                border: "2px solid #000",
-                boxShadow: "4px 4px 0px #000",
-                padding: "12px 24px",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-              }}
-            >
-              <div
-                style={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  backgroundColor: status.textColor,
-                }}
-              />
-              <span
-                style={{
-                  fontWeight: 900,
-                  fontSize: 18,
-                  color: status.textColor,
-                  letterSpacing: "1px",
-                }}
-              >
-                {status.label}
-              </span>
+            <div style={{ backgroundColor: status.color, border: "2px solid #000", boxShadow: "4px 4px 0px #000", padding: "12px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: status.textColor }} />
+              <span style={{ fontWeight: 900, fontSize: 18, color: status.textColor, letterSpacing: "1px" }}>{status.label}</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main content */}
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "40px 24px" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "2fr 1fr",
-            gap: 24,
-          }}
-        >
-          {/* Left column */}
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             {revisionSuccess && (
-              <div
-                style={{
-                  padding: "16px 24px",
-                  backgroundColor: "#DCFCE7",
-                  border: "2px solid #16A34A",
-                  fontWeight: 900,
-                  fontSize: 15,
-                  color: "#166534",
-                }}
-              >
+              <div style={{ padding: "16px 24px", backgroundColor: "#DCFCE7", border: "2px solid #16A34A", fontWeight: 900, fontSize: 15, color: "#166534" }}>
                 ✓ Доработанная заявка отправлена. Статус заявки: На проверке.
               </div>
             )}
-            {/* Status card */}
+
             <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div
-                style={{
-                  backgroundColor: status.color,
-                  padding: "16px 24px",
-                  borderBottom: "2px solid #000",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                }}
-              >
-                <span style={{ fontWeight: 900, fontSize: 16, color: status.textColor }}>
-                  СТАТУС ЗАЯВ��КИ: {status.label}
-                </span>
+              <div style={{ backgroundColor: status.color, padding: "16px 24px", borderBottom: "2px solid #000", display: "flex", alignItems: "center", gap: 12 }}>
+                <span style={{ fontWeight: 900, fontSize: 16, color: status.textColor }}>СТАТУС ЗАЯВКИ: {status.label}</span>
               </div>
               <div style={{ padding: "20px 24px" }}>
-                <p style={{ fontSize: 15, color: "#333", lineHeight: 1.6, margin: 0 }}>
-                  {status.desc}
-                </p>
+                <p style={{ fontSize: 15, color: "#333", lineHeight: 1.6, margin: 0 }}>{status.desc}</p>
                 {currentStatus === "revision" && application?.revisionComment && (
                   <div style={{ marginTop: 16, padding: "12px 16px", backgroundColor: "#FEF3C7", border: "2px solid #F59E0B" }}>
                     <div style={{ fontSize: 11, fontWeight: 900, color: "#92400E", letterSpacing: "0.5px", marginBottom: 6 }}>КОММЕНТАРИЙ АДМИНИСТРАТОРА</div>
@@ -264,124 +159,54 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               </div>
             </div>
 
-            {/* Timeline */}
             <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div
-                style={{
-                  backgroundColor: "#000",
-                  padding: "16px 24px",
-                  borderBottom: "2px solid #000",
-                }}
-              >
-                <span style={{ fontWeight: 900, fontSize: 16, color: "#fff" }}>
-                  ИСТОРИЯ ЗАЯВКИ
-                </span>
+              <div style={{ backgroundColor: "#000", padding: "16px 24px", borderBottom: "2px solid #000" }}>
+                <span style={{ fontWeight: 900, fontSize: 16, color: "#fff" }}>ИСТОРИЯ ЗАЯВКИ</span>
               </div>
               <div style={{ padding: "24px" }}>
                 {timelineSteps.map((step, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 16,
-                      marginBottom: i < timelineSteps.length - 1 ? 20 : 0,
-                    }}
-                  >
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: i < timelineSteps.length - 1 ? 20 : 0 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                      <div
-                        style={{
-                          width: 24,
-                          height: 24,
-                          border: "2px solid #000",
-                          backgroundColor: step.active ? "#ED7C30" : step.done ? "#000" : "#fff",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
+                      <div style={{ width: 24, height: 24, border: "2px solid #000", backgroundColor: step.active ? "#ED7C30" : step.done ? "#000" : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {step.done && !step.active && (
-                          <svg width="12" height="10" viewBox="0 0 12 10" fill="none">
-                            <path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="square" />
-                          </svg>
+                          <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="square" /></svg>
                         )}
-                        {step.active && (
-                          <div style={{ width: 8, height: 8, backgroundColor: "#000" }} />
-                        )}
+                        {step.active && <div style={{ width: 8, height: 8, backgroundColor: "#000" }} />}
                       </div>
-                      {i < timelineSteps.length - 1 && (
-                        <div
-                          style={{
-                            width: 2,
-                            height: 28,
-                            backgroundColor: step.done ? "#000" : "#ddd",
-                            marginTop: 2,
-                          }}
-                        />
-                      )}
+                      {i < timelineSteps.length - 1 && <div style={{ width: 2, height: 28, backgroundColor: step.done ? "#000" : "#ddd", marginTop: 2 }} />}
                     </div>
                     <div>
-                      <div
-                        style={{
-                          fontWeight: step.active || step.done ? 900 : 400,
-                          fontSize: 15,
-                          color: step.done || step.active ? "#000" : "#999",
-                        }}
-                      >
-                        {step.label}
-                      </div>
-                      <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>
-                        {step.date}
-                      </div>
+                      <div style={{ fontWeight: step.active || step.done ? 900 : 400, fontSize: 15, color: step.done || step.active ? "#000" : "#999" }}>{step.label}</div>
+                      <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>{step.date}</div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Submitted data */}
             <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div
-                style={{
-                  backgroundColor: "#f5f5f5",
-                  padding: "16px 24px",
-                  borderBottom: "2px solid #000",
-                }}
-              >
-                <span style={{ fontWeight: 900, fontSize: 16, color: "#000" }}>
-                  ДАННЫЕ ЗАЯВКИ
-                </span>
+              <div style={{ backgroundColor: "#f5f5f5", padding: "16px 24px", borderBottom: "2px solid #000" }}>
+                <span style={{ fontWeight: 900, fontSize: 16, color: "#000" }}>ДАННЫЕ ЗАЯВКИ</span>
               </div>
               <div style={{ padding: "24px" }}>
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: 16,
-                  }}
-                >
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
                   {[
-                    { label: "ФИО", value: userData?.fullName || "—" },
-                    { label: "ДАТА РОЖДЕНИЯ", value: userData?.birthDate ? new Date(userData.birthDate).toLocaleDateString("ru-RU") : "—" },
-                    { label: "ПАСПОРТ", value: userData ? `${userData.passportSeries} ${userData.passportNumber}` : "—" },
-                    { label: "ТЕЛЕФОН", value: userData?.phone || "—" },
-                    { label: "ШКОЛА", value: userData?.school || "—" },
-                    { label: "КЛАСС", value: userData?.grade ? `${userData.grade} класс` : "—" },
+                    { label: "ФИО", value: application?.fullName || userData?.fullName || "—" },
+                    { label: "ДАТА РОЖДЕНИЯ", value: (application?.birthDate || userData?.birthDate) ? new Date(application?.birthDate || userData?.birthDate || "").toLocaleDateString("ru-RU") : "—" },
+                    { label: "ПАСПОРТ", value: `${application?.passportSeries || userData?.passportSeries || ""} ${application?.passportNumber || userData?.passportNumber || ""}`.trim() || "—" },
+                    { label: "ТЕЛЕФОН", value: application?.phone || userData?.phone || "—" },
+                    { label: "ШКОЛА", value: application?.school || userData?.school || "—" },
+                    { label: "КЛАСС", value: (application?.grade || userData?.grade) ? `${application?.grade || userData?.grade} класс` : "—" },
                   ].map((field) => (
                     <div key={field.label}>
-                      <div style={{ fontSize: 11, fontWeight: 900, color: "#666", letterSpacing: "0.5px", marginBottom: 4 }}>
-                        {field.label}
-                      </div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: "#000" }}>
-                        {field.value}
-                      </div>
+                      <div style={{ fontSize: 11, fontWeight: 900, color: "#666", letterSpacing: "0.5px", marginBottom: 4 }}>{field.label}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#000" }}>{field.value}</div>
                     </div>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Форма доработки заявки (только при статусе «На доработке») */}
             {currentStatus === "revision" && application && (
               <div style={{ border: "2px solid #F59E0B", boxShadow: "4px 4px 0px #000" }}>
                 <div style={{ backgroundColor: "#F59E0B", padding: "16px 24px", borderBottom: "2px solid #000" }}>
@@ -457,10 +282,9 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                       try {
                         let existingPaths: string[] = [];
                         try {
-                          if (editForm.attachments) {
-                            const parsed = JSON.parse(editForm.attachments);
-                            if (Array.isArray(parsed)) existingPaths = parsed;
-                          }
+                          const att = editForm.attachments || application?.attachments || "[]";
+                          const parsed = JSON.parse(att);
+                          if (Array.isArray(parsed)) existingPaths = parsed;
                         } catch { /* ignore */ }
                         let newPaths: string[] = [];
                         if (revisionFiles.length > 0) {
@@ -471,31 +295,28 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                             });
                             if (res.results) newPaths = res.results.filter((r) => r.saved && r.path).map((r) => r.path!);
                           } catch {
-                            // Сервер вернул не JSON (например PHP не выполняется) — сохраняем только правки без новых файлов
                             newPaths = [];
                           }
                         }
                         const allPaths = [...existingPaths, ...newPaths];
-                        const updatedUser = { ...editForm, attachments: JSON.stringify(allPaths), benefits: editForm.benefits || userData?.benefits || "[]" };
-                        const { password: _pw, confirmPassword: _cp, ...applicationData } = updatedUser;
-                        const raw = localStorage.getItem("top_applications");
-                        const apps: StoredApplication[] = raw ? JSON.parse(raw) : [];
-                        let benefitsArr: string[] = [];
-                        try {
-                          const b = updatedUser.benefits || userData?.benefits || "[]";
-                          benefitsArr = JSON.parse(b);
-                          if (!Array.isArray(benefitsArr)) benefitsArr = [];
-                        } catch { /* ignore */ }
-                        const updated = apps.map((a) =>
-                          a.id === application!.id
-                            ? { ...a, ...applicationData, benefits: benefitsArr, status: "review" as const, revisionComment: "" }
-                            : a
-                        );
-                        localStorage.setItem("top_applications", JSON.stringify(updated));
-                        localStorage.setItem("top_user", JSON.stringify(updatedUser));
+                        await submitRevision({
+                          fullName: editForm.fullName || "",
+                          birthDate: editForm.birthDate || "",
+                          passportSeries: editForm.passportSeries || "",
+                          passportNumber: editForm.passportNumber || "",
+                          address: editForm.address || "",
+                          school: editForm.school || "",
+                          grade: editForm.grade || "",
+                          phone: editForm.phone || "",
+                          email: editForm.email || "",
+                          shift: editForm.shift || "",
+                          benefits: editForm.benefits || userData?.benefits || "[]",
+                          attachments: JSON.stringify(allPaths),
+                        });
                         setRevisionFiles([]);
                         setRevisionSuccess(true);
-                        setDataVersion((v) => v + 1);
+                        const updatedApp = await getMyApplication();
+                        if (updatedApp) setApplication(updatedApp);
                         onDataUpdate?.();
                         setTimeout(() => setRevisionSuccess(false), 5000);
                       } catch (err) {
@@ -506,15 +327,9 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                     }}
                     disabled={revisionSubmitting}
                     style={{
-                      width: "100%",
-                      padding: "14px",
-                      fontSize: 16,
-                      fontWeight: 900,
-                      color: "#000",
-                      backgroundColor: revisionSubmitting ? "#ccc" : "#F59E0B",
-                      border: "2px solid #000",
-                      boxShadow: "4px 4px 0px #000",
-                      cursor: revisionSubmitting ? "not-allowed" : "pointer",
+                      width: "100%", padding: "14px", fontSize: 16, fontWeight: 900, color: "#000",
+                      backgroundColor: revisionSubmitting ? "#ccc" : "#F59E0B", border: "2px solid #000",
+                      boxShadow: "4px 4px 0px #000", cursor: revisionSubmitting ? "not-allowed" : "pointer",
                       fontFamily: "'Inter', sans-serif",
                     }}
                   >
@@ -525,21 +340,9 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
             )}
           </div>
 
-          {/* Right column */}
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            {/* Номер заявки */}
-            <div
-              style={{
-                border: "2px solid #000",
-                boxShadow: "4px 4px 0px #000",
-                backgroundColor: "#F8EDAD",
-                padding: "24px",
-                textAlign: "center",
-              }}
-            >
-              <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.5)", letterSpacing: "1px", marginBottom: 8 }}>
-                НОМЕР ЗАЯВКИ
-              </div>
+            <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000", backgroundColor: "#F8EDAD", padding: "24px", textAlign: "center" }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.5)", letterSpacing: "1px", marginBottom: 8 }}>НОМЕР ЗАЯВКИ</div>
               <div style={{ fontSize: 32, fontWeight: 900, color: "#ED7C30", lineHeight: 1, marginBottom: 4 }}>
                 {application?.id ? `#${application.id.replace(/^app_/, "")}` : "—"}
               </div>
@@ -548,105 +351,50 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               </div>
             </div>
 
-            {/* Льготы */}
             <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div
-                style={{
-                  backgroundColor: "#ED7C30",
-                  padding: "16px 24px",
-                  borderBottom: "2px solid #000",
-                }}
-              >
-                <span style={{ fontWeight: 900, fontSize: 14, color: "#000" }}>
-                  КАТЕГОРИЯ ЛЬГОТ
-                </span>
+              <div style={{ backgroundColor: "#ED7C30", padding: "16px 24px", borderBottom: "2px solid #000" }}>
+                <span style={{ fontWeight: 900, fontSize: 14, color: "#000" }}>КАТЕГОРИЯ ЛЬГОТ</span>
               </div>
               <div style={{ padding: "16px 24px" }}>
-                <div
-                  style={{
-                    border: "2px solid #000",
-                    padding: "12px 16px",
-                    backgroundColor: "#fff",
-                    fontWeight: 900,
-                    fontSize: 13,
-                  }}
-                >
+                <div style={{ border: "2px solid #000", padding: "12px 16px", backgroundColor: "#fff", fontWeight: 900, fontSize: 13 }}>
                   {application?.benefits?.length
                     ? application.benefits.map((id) => benefitLabels[id] || id).join(", ")
                     : (userData?.benefits ? (() => {
                         try {
                           const ids = JSON.parse(userData.benefits) as string[];
                           return Array.isArray(ids) ? ids.map((id) => benefitLabels[id] || id).join(", ") : "БЕЗ ЛЬГОТ";
-                        } catch {
-                          return "БЕЗ ЛЬГОТ";
-                        }
+                        } catch { return "БЕЗ ЛЬГОТ"; }
                       })() : "БЕЗ ЛЬГОТ")}
                 </div>
               </div>
             </div>
 
-            {/* Documents — реальные загруженные файлы из заявки */}
             <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div
-                style={{
-                  backgroundColor: "#f5f5f5",
-                  padding: "16px 24px",
-                  borderBottom: "2px solid #000",
-                }}
-              >
-                <span style={{ fontWeight: 900, fontSize: 14, color: "#000" }}>
-                  ЗАГРУЖЕННЫЕ ДОКУМЕНТЫ
-                </span>
+              <div style={{ backgroundColor: "#f5f5f5", padding: "16px 24px", borderBottom: "2px solid #000" }}>
+                <span style={{ fontWeight: 900, fontSize: 14, color: "#000" }}>ЗАГРУЖЕННЫЕ ДОКУМЕНТЫ</span>
               </div>
               <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
                 {(() => {
                   let paths: string[] = [];
                   try {
-                    if (userData?.attachments) {
-                      const parsed = JSON.parse(userData.attachments);
-                      if (Array.isArray(parsed)) paths = parsed;
-                    }
-                  } catch {
-                    paths = [];
-                  }
+                    const att = application?.attachments || userData?.attachments || "[]";
+                    const parsed = JSON.parse(att);
+                    if (Array.isArray(parsed)) paths = parsed;
+                  } catch { paths = []; }
                   if (paths.length === 0) {
-                    return (
-                      <div style={{ fontSize: 13, color: "#666", fontStyle: "italic" }}>
-                        Нет загруженных документов
-                      </div>
-                    );
+                    return <div style={{ fontSize: 13, color: "#666", fontStyle: "italic" }}>Нет загруженных документов</div>;
                   }
                   return paths.map((path, i) => {
-                    const name = path.split("/").pop() || path;
+                    const nameStr = path.split("/").pop() || path;
                     const href = getFileUrl(path);
                     return (
-                      <a
-                        key={i}
-                        href={href}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 10,
-                          padding: "10px 12px",
-                          border: "2px solid #000",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          color: "#000",
-                          textDecoration: "none",
-                          backgroundColor: "#fff",
-                          transition: "background 0.15s",
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.backgroundColor = "#F8EDAD";
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.backgroundColor = "#fff";
-                        }}
+                      <a key={i} href={href} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "2px solid #000", fontSize: 12, fontWeight: 700, color: "#000", textDecoration: "none", backgroundColor: "#fff", transition: "background 0.15s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F8EDAD"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fff"; }}
                       >
                         <span>📄</span>
-                        <span style={{ wordBreak: "break-all" }}>{name}</span>
+                        <span style={{ wordBreak: "break-all" }}>{nameStr}</span>
                         <span style={{ marginLeft: "auto", fontSize: 11, color: "#666" }}>открыть</span>
                       </a>
                     );
@@ -655,53 +403,14 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               </div>
             </div>
 
-            {/* Support */}
-            <div
-              style={{
-                border: "2px solid #000",
-                padding: "20px",
-                backgroundColor: "#f5f5f5",
-              }}
-            >
-              <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>
-                НУЖНА ПОМОЩЬ?
-              </div>
-              <p style={{ fontSize: 13, color: "#555", lineHeight: 1.5, marginBottom: 16 }}>
-                Свяжитесь с куратором программы по телефону или email.
-              </p>
+            <div style={{ border: "2px solid #000", padding: "20px", backgroundColor: "#f5f5f5" }}>
+              <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>НУЖНА ПОМОЩЬ?</div>
+              <p style={{ fontSize: 13, color: "#555", lineHeight: 1.5, marginBottom: 16 }}>Свяжитесь с куратором программы по телефону или email.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <a
-                  href="tel:88001234567"
-                  style={{
-                    display: "block",
-                    padding: "10px 16px",
-                    border: "2px solid #000",
-                    backgroundColor: "#fff",
-                    fontWeight: 900,
-                    fontSize: 13,
-                    color: "#000",
-                    textDecoration: "none",
-                    textAlign: "center",
-                    boxShadow: "2px 2px 0px #000",
-                  }}
-                >
+                <a href="tel:88001234567" style={{ display: "block", padding: "10px 16px", border: "2px solid #000", backgroundColor: "#fff", fontWeight: 900, fontSize: 13, color: "#000", textDecoration: "none", textAlign: "center", boxShadow: "2px 2px 0px #000" }}>
                   8 800 123-45-67
                 </a>
-                <a
-                  href="mailto:help@trudovoelete.ru"
-                  style={{
-                    display: "block",
-                    padding: "10px 16px",
-                    border: "2px solid #000",
-                    backgroundColor: "#F8EDAD",
-                    fontWeight: 900,
-                    fontSize: 12,
-                    color: "#000",
-                    textDecoration: "none",
-                    textAlign: "center",
-                    letterSpacing: "0.3px",
-                  }}
-                >
+                <a href="mailto:help@trudovoelete.ru" style={{ display: "block", padding: "10px 16px", border: "2px solid #000", backgroundColor: "#F8EDAD", fontWeight: 900, fontSize: 12, color: "#000", textDecoration: "none", textAlign: "center", letterSpacing: "0.3px" }}>
                   НАПИСАТЬ КУРАТОРУ
                 </a>
               </div>

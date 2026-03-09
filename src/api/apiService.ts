@@ -1,9 +1,10 @@
 /**
- * Сервис для обращения к PHP API: сохранение анкет и загрузка файлов.
- * Базовый URL: относительно текущего сайта (после деплоя — корень домена).
+ * Сервис для обращения к PHP API: регистрация, вход, заявки, загрузка файлов.
  */
 
 const API_BASE = `${typeof window !== 'undefined' ? window.location.origin : ''}/api`;
+
+/* ─── Типы ─── */
 
 export interface SaveApplicationPayload {
   fullName: string;
@@ -16,8 +17,9 @@ export interface SaveApplicationPayload {
   phone: string;
   email?: string;
   password: string;
-  benefits?: string; // JSON-строка массива выбранных льгот
-  attachments?: string; // JSON-строка массивов путей загруженных файлов
+  benefits?: string;
+  attachments?: string;
+  shift?: string;
   [key: string]: string | undefined;
 }
 
@@ -36,79 +38,245 @@ export interface UploadResponse {
   error?: string;
 }
 
-/** Параметры для загрузки на Яндекс.Диск (папки по смене и ФИО) */
 export interface UploadToYandexOptions {
-  shift: string; // "1" | "2" | "3"
+  shift: string;
   fullName: string;
 }
 
-/**
- * Проверяет, что ответ похож на HTML/PHP (сервер не выполняет PHP).
- * В режиме dev без PHP заявку сохраняем только в localStorage.
- */
+export interface AuthResponse {
+  success: boolean;
+  token?: string;
+  user?: UserData;
+  applicationId?: number;
+  error?: string;
+}
+
+export interface UserData {
+  id: number;
+  email: string;
+  fullName: string;
+  birthDate?: string;
+  passportSeries?: string;
+  passportNumber?: string;
+  address?: string;
+  school?: string;
+  grade?: string;
+  phone?: string;
+  shift?: string;
+  benefits?: string;
+}
+
+export interface ApplicationData {
+  id: string;
+  dbId: number;
+  userId: number;
+  fullName: string;
+  birthDate: string;
+  passportSeries: string;
+  passportNumber: string;
+  address: string;
+  school: string;
+  grade: string;
+  phone: string;
+  email: string;
+  shift: string;
+  benefits: string[];
+  attachments: string;
+  status: 'review' | 'approved' | 'rejected' | 'revision';
+  revisionComment: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/* ─── Хелперы ─── */
+
+function getAuthToken(): string | null {
+  return localStorage.getItem('top_auth_token');
+}
+
+function authHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  const h: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) h['Authorization'] = `Bearer ${token}`;
+  return h;
+}
+
 function isNonJsonResponse(text: string): boolean {
   const t = text.trimStart();
   return t.startsWith('<') || t.startsWith('<?');
 }
 
+/* ─── Аутентификация ─── */
+
 /**
- * Отправка данных анкеты участника на save_data.php (JSON).
- * Если сервер вернул не JSON (например, исходник PHP при работе через Vite без PHP),
- * возвращаем успех без ошибки — заявка сохранится в localStorage в App.
+ * Регистрация нового пользователя + создание заявки.
+ * При успехе сохраняет token и user в localStorage.
  */
+export async function registerUser(data: SaveApplicationPayload): Promise<AuthResponse> {
+  const url = `${API_BASE}/register.php`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const text = await res.text();
+  if (isNonJsonResponse(text)) {
+    return { success: true, token: `local_${Date.now()}` };
+  }
+  const json = JSON.parse(text) as AuthResponse;
+  if (!json.success) {
+    throw new Error(json.error || 'Ошибка регистрации');
+  }
+  if (json.token) {
+    localStorage.setItem('top_auth_token', json.token);
+  }
+  if (json.user) {
+    localStorage.setItem('top_user', JSON.stringify(json.user));
+  }
+  return json;
+}
+
+/**
+ * Вход по email и паролю.
+ * При успехе сохраняет token и user в localStorage.
+ */
+export async function loginUser(email: string, password: string): Promise<AuthResponse> {
+  const url = `${API_BASE}/login.php`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
+  const text = await res.text();
+  if (isNonJsonResponse(text)) {
+    throw new Error('Сервер не выполняет PHP. Проверьте деплой.');
+  }
+  const json = JSON.parse(text) as AuthResponse;
+  if (!json.success) {
+    throw new Error(json.error || 'Неверный email или пароль');
+  }
+  if (json.token) {
+    localStorage.setItem('top_auth_token', json.token);
+  }
+  if (json.user) {
+    localStorage.setItem('top_user', JSON.stringify(json.user));
+  }
+  return json;
+}
+
+/** Выход — очистка сессии на клиенте */
+export function logoutUser(): void {
+  localStorage.removeItem('top_auth_token');
+  localStorage.removeItem('top_user');
+}
+
+/* ─── Заявки ─── */
+
+/**
+ * Получить свою заявку (для личного кабинета).
+ */
+export async function getMyApplication(): Promise<ApplicationData | null> {
+  const url = `${API_BASE}/get_applications.php?mode=my`;
+  const res = await fetch(url, { headers: authHeaders() });
+  const text = await res.text();
+  if (isNonJsonResponse(text)) return null;
+  const json = JSON.parse(text);
+  if (!json.success) return null;
+  return json.application || null;
+}
+
+/**
+ * Получить все заявки (для админки).
+ */
+export async function getAllApplications(adminPassword: string): Promise<ApplicationData[]> {
+  const url = `${API_BASE}/get_applications.php?mode=all&admin_password=${encodeURIComponent(adminPassword)}`;
+  const res = await fetch(url);
+  const text = await res.text();
+  if (isNonJsonResponse(text)) return [];
+  const json = JSON.parse(text);
+  if (!json.success) throw new Error(json.error || 'Ошибка загрузки заявок');
+  return json.applications || [];
+}
+
+/**
+ * Обновить статус заявки (для админки).
+ */
+export async function updateApplicationStatus(
+  adminPassword: string,
+  applicationDbId: number,
+  status: string,
+  revisionComment?: string
+): Promise<void> {
+  const url = `${API_BASE}/update_application.php`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      admin_password: adminPassword,
+      application_id: applicationDbId,
+      status,
+      revision_comment: revisionComment || '',
+    }),
+  });
+  const text = await res.text();
+  if (isNonJsonResponse(text)) return;
+  const json = JSON.parse(text);
+  if (!json.success) throw new Error(json.error || 'Ошибка обновления статуса');
+}
+
+/**
+ * Отправить доработанную заявку (для пользователя).
+ */
+export async function submitRevision(data: Record<string, string>): Promise<void> {
+  const url = `${API_BASE}/update_application.php`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: authHeaders(),
+    body: JSON.stringify(data),
+  });
+  const text = await res.text();
+  if (isNonJsonResponse(text)) return;
+  const json = JSON.parse(text);
+  if (!json.success) throw new Error(json.error || 'Ошибка обновления заявки');
+}
+
+/* ─── Совместимость: save_data.php (JSON-файл) ─── */
+
 export async function saveApplication(data: SaveApplicationPayload): Promise<SaveDataResponse> {
   const url = `${API_BASE}/save_data.php`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      ...data,
-      status: 'review',
-    }),
+    body: JSON.stringify({ ...data, status: 'review' }),
   });
   const text = await res.text();
   if (isNonJsonResponse(text)) {
     return { success: true, id: `local_${Date.now()}` };
   }
   const json = JSON.parse(text) as SaveDataResponse;
-  if (!res.ok) {
-    throw new Error(json.error || 'Ошибка сохранения заявки');
-  }
+  if (!res.ok) throw new Error(json.error || 'Ошибка сохранения заявки');
   return json;
 }
 
-/**
- * Загрузка одного файла (локальный upload.php).
- * Если сервер вернул не JSON (PHP не выполняется), возвращаем успех без пути — заявка сохранится без вложений.
- */
+/* ─── Загрузка файлов ─── */
+
 export async function uploadFile(file: File): Promise<UploadResponse> {
   const url = `${API_BASE}/upload.php`;
   const form = new FormData();
   form.append('file', file);
   const res = await fetch(url, { method: 'POST', body: form });
   const text = await res.text();
-  if (isNonJsonResponse(text)) {
-    return { success: true };
-  }
+  if (isNonJsonResponse(text)) return { success: true };
   const json = JSON.parse(text) as UploadResponse;
-  if (!res.ok) {
-    throw new Error(json.error || 'Ошибка загрузки файла');
-  }
+  if (!res.ok) throw new Error(json.error || 'Ошибка загрузки файла');
   return json;
 }
 
-/**
- * Загрузка файлов на Яндекс.Диск (папки: top / «1 смена»|«2 смена»|«3 смена» / ФИО) или на хостинг.
- * Если переданы options.shift и options.fullName — используется upload_to_yandex.php, иначе upload.php.
- * При ответе не-JSON (PHP не выполняется) возвращаем успех без путей.
- */
 export async function uploadFiles(
   files: File[],
   options?: UploadToYandexOptions
 ): Promise<UploadResponse> {
-  if (files.length === 0) {
-    return { success: true, results: [] };
-  }
+  if (files.length === 0) return { success: true, results: [] };
   const useYandex = options && options.shift && options.fullName.trim().length > 0;
   const url = useYandex ? `${API_BASE}/upload_to_yandex.php` : `${API_BASE}/upload.php`;
   const form = new FormData();
@@ -123,16 +291,10 @@ export async function uploadFiles(
     return { success: true, results: files.map((f) => ({ originalName: f.name, saved: false })) };
   }
   const json = JSON.parse(text) as UploadResponse;
-  if (!res.ok) {
-    throw new Error(json.error || 'Ошибка загрузки файлов');
-  }
+  if (!res.ok) throw new Error(json.error || 'Ошибка загрузки файлов');
   return json;
 }
 
-/**
- * Возвращает URL для просмотра/скачивания файла по пути из заявки.
- * Пути с Яндекс.Диска (начинаются с "top/") открываются через get_yandex_file.php.
- */
 export function getFileUrl(path: string): string {
   if (path.startsWith('http')) return path;
   const base = typeof window !== 'undefined' ? window.location.origin : '';
