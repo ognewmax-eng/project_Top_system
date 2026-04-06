@@ -12,8 +12,8 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
     <section
       id="about"
       style={{
-        backgroundColor: "#F8EDAD",
-        borderBottom: "2px solid #000",
+        backgroundColor: "#F0EAD2",
+        borderBottom: "none",
         fontFamily: "'Inter', sans-serif",
         overflow: "hidden",
       }}
@@ -34,8 +34,8 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
           <div
             style={{
               display: "inline-block",
-              backgroundColor: "#ED7C30",
-              border: "2px solid #000",
+              backgroundColor: "#879E82",
+              border: "none",
               padding: "4px 12px",
               fontWeight: 900,
               fontSize: 13,
@@ -50,7 +50,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
             style={{
               fontSize: mobile ? "clamp(40px, 12vw, 60px)" : "clamp(52px, 8vw, 100px)",
               fontWeight: 900,
-              color: "#000",
+              color: "#003F5C",
               lineHeight: 0.9,
               letterSpacing: "-2px",
               margin: mobile ? "0 0 16px 0" : "0 0 24px 0",
@@ -62,7 +62,7 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
 
           <p
             style={{
-              color: "#000",
+              color: "#003F5C",
               fontSize: mobile ? 15 : 18,
               lineHeight: 1.5,
               marginBottom: mobile ? 24 : 40,
@@ -80,10 +80,10 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 padding: mobile ? "14px 24px" : "18px 40px",
                 fontSize: mobile ? 15 : 18,
                 fontWeight: 900,
-                color: "#000",
-                backgroundColor: "#ED7C30",
-                border: "2px solid #000",
-                boxShadow: "5px 5px 0px #000",
+                color: "#003F5C",
+                backgroundColor: "#879E82",
+                border: "none",
+                boxShadow: "none",
                 cursor: "pointer",
                 letterSpacing: "0.5px",
                 flex: mobile ? "1 1 100%" : undefined,
@@ -112,9 +112,9 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
             <div
               key={i}
               style={{
-                backgroundColor: i % 2 === 0 ? "#fff" : "#ED7C30",
-                border: "2px solid #000",
-                boxShadow: mobile ? "3px 3px 0px #000" : "4px 4px 0px #000",
+                backgroundColor: i % 2 === 0 ? "#fff" : "#879E82",
+                border: "none",
+                boxShadow: "none",
                 padding: mobile ? "16px" : "24px",
               }}
             >
@@ -122,14 +122,14 @@ export function HeroSection({ onApplyClick }: HeroSectionProps) {
                 style={{
                   fontSize: mobile ? 24 : 36,
                   fontWeight: 900,
-                  color: "#000",
+                  color: "#003F5C",
                   lineHeight: 1,
                   marginBottom: 8,
                 }}
               >
                 {stat.num}
               </div>
-              <div style={{ fontSize: mobile ? 11 : 13, color: "#000", fontWeight: 700, whiteSpace: "pre-line" }}>
+              <div style={{ fontSize: mobile ? 11 : 13, color: "#003F5C", fontWeight: 700, whiteSpace: "pre-line" }}>
                 {stat.label}
               </div>
             </div>

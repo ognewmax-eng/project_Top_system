@@ -1,61 +1,31 @@
-**Add your own guidelines here**
-<!--
+# Рекомендации по работе с проектом
 
-System Guidelines
+Краткие правила для разработчиков и для ИИ-ассистентов при изменении кода.
 
-Use this file to provide the AI with rules and guidelines you want it to follow.
-This template outlines a few examples of things you can add. You can add your own sections and format it to suit your needs
+## Общее
 
-TIP: More context isn't always better. It can confuse the LLM. Try and add the most important rules you need
+- Меняйте только то, что требуется задачей; не делайте «заодно» рефакторинг несвязанных файлов.
+- Сохраняйте стиль существующих файлов: inline-стили в компонентах, именование на русском в UI, `Inter` в `fontFamily` где уже принято.
+- Алиас импортов: `@/` → `src/` (см. `tsconfig.json`).
 
-# General guidelines
+## Frontend (React + Vite)
 
-Any general rules you want the AI to follow.
-For example:
+- Соблюдайте правила хуков React (без условных `useState`/`useEffect` до всех вызовов).
+- Адаптивность: используйте хук `src/hooks/useIsMobile.ts` и условные стили, а не дублирование целых страниц без нужды.
+- Тяжёлые библиотеки (например, `xlsx`) — только **динамический** `import()`, чтобы не раздувать основной бандл.
 
-* Only use absolute positioning when necessary. Opt for responsive and well structured layouts that use flexbox and grid by default
-* Refactor code as you go to keep code clean
-* Keep file sizes small and put helper functions and components in their own files.
+## Backend (PHP)
 
---------------
+- Секреты только в переменных окружения или в файлах с точкой в начале имени (`.db_credentials` и т.д.), не коммитить.
+- После изменений схемы БД обновляйте `public/api/db_setup.php` и документируйте миграцию в `README.md` / `DEPLOY_REG_RU.md`.
+- Новые поля заявок должны согласовываться с `register.php`, `get_applications.php`, `update_application.php` и типами в `src/api/apiService.ts`.
 
-# Design system guidelines
-Rules for how the AI should make generations look like your company's design system
+## Документация
 
-Additionally, if you select a design system to use in the prompt box, you can reference
-your design system's components, tokens, variables and components.
-For example:
+- При изменении поведения формы, льгот, документов, API или деплоя — обновляйте **`README.md`** и при необходимости **`DEPLOY_REG_RU.md`**.
+- Не добавляйте новые markdown-файлы без запроса заказчика, если задача не про документацию.
 
-* Use a base font-size of 14px
-* Date formats should always be in the format “Jun 10”
-* The bottom toolbar should only ever have a maximum of 4 items
-* Never use the floating action button with the bottom toolbar
-* Chips should always come in sets of 3 or more
-* Don't use a dropdown if there are 2 or fewer options
+## Тесты перед выкладкой
 
-You can also create sub sections and add more specific details
-For example:
-
-
-## Button
-The Button component is a fundamental interactive element in our design system, designed to trigger actions or navigate
-users through the application. It provides visual feedback and clear affordances to enhance user experience.
-
-### Usage
-Buttons should be used for important actions that users need to take, such as form submissions, confirming choices,
-or initiating processes. They communicate interactivity and should have clear, action-oriented labels.
-
-### Variants
-* Primary Button
-  * Purpose : Used for the main action in a section or page
-  * Visual Style : Bold, filled with the primary brand color
-  * Usage : One primary button per section to guide users toward the most important action
-* Secondary Button
-  * Purpose : Used for alternative or supporting actions
-  * Visual Style : Outlined with the primary color, transparent background
-  * Usage : Can appear alongside a primary button for less important actions
-* Tertiary Button
-  * Purpose : Used for the least important actions
-  * Visual Style : Text-only with no border, using primary color
-  * Usage : For actions that should be available but not emphasized
--->
+- `npm run build` должен проходить без ошибок.
+- Проверьте критичные сценарии: регистрация, вход, личный кабинет, админ-панель, загрузка файла.

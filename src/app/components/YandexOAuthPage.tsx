@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Страница /yandexouth — настройка OAuth для загрузки файлов на Яндекс.Диск.
  * Доступ только по прямой ссылке. Запускает поток авторизации и отображает результат после callback.
  */
@@ -77,7 +77,7 @@ export function YandexOAuthPage() {
           width: "100%",
           background: "#fff",
           borderRadius: 12,
-          boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+          boxShadow: "0 4px 20px rgba(0,63,92,0.08)",
           padding: 32,
         }}
       >

@@ -18,7 +18,8 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "12px 16px",
-    border: "2px solid #000",
+    border: "none",
+    borderBottom: "1.5px solid rgba(135,158,130,0.5)",
     backgroundColor: "#fff",
     fontSize: 15,
     fontFamily: "'Inter', sans-serif",
@@ -33,7 +34,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
     fontWeight: 900,
     letterSpacing: "0.5px",
     marginBottom: 8,
-    color: "#000",
+    color: "#003F5C",
   };
 
   const handleLogin = async () => {
@@ -64,7 +65,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "rgba(0,0,0,0.6)",
+        backgroundColor: "rgba(0,63,92,0.6)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -77,8 +78,8 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
       <div
         style={{
           backgroundColor: "#fff",
-          border: "2px solid #000",
-          boxShadow: mobile ? "4px 4px 0px #000" : "8px 8px 0px #000",
+          border: "none",
+          boxShadow: "none",
           width: "100%",
           maxWidth: 440,
         }}
@@ -87,19 +88,19 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
         {/* Header */}
         <div
           style={{
-            backgroundColor: "#F8EDAD",
+            backgroundColor: "#F0EAD2",
             padding: mobile ? "16px 20px" : "20px 28px",
-            borderBottom: "2px solid #000",
+            borderBottom: "none",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
           }}
         >
           <div>
-            <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.5)", letterSpacing: "1px", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,63,92,0.5)", letterSpacing: "1px", marginBottom: 4 }}>
               ТРУДОВЫЕ ОТРЯДЫ ПОДРОСТКОВ
             </div>
-            <div style={{ fontSize: 22, fontWeight: 900, color: "#000", letterSpacing: "-0.5px" }}>
+            <div style={{ fontSize: 22, fontWeight: 900, color: "#003F5C", letterSpacing: "-0.5px" }}>
               ЛИЧНЫЙ КАБИНЕТ
             </div>
           </div>
@@ -108,7 +109,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             style={{
               width: 36,
               height: 36,
-              border: "2px solid #000",
+              border: "none",
               backgroundColor: "transparent",
               cursor: "pointer",
               fontSize: 18,
@@ -198,22 +199,20 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
               padding: "16px",
               fontSize: 16,
               fontWeight: 900,
-              color: "#000",
-              backgroundColor: loading ? "#ccc" : "#ED7C30",
-              border: "2px solid #000",
-              boxShadow: loading ? "none" : "5px 5px 0px #000",
+              color: "#fff",
+              backgroundColor: loading ? "#ccc" : "#003F5C",
+              border: "none",
+              boxShadow: "none",
               cursor: loading ? "not-allowed" : "pointer",
               letterSpacing: "1px",
-              transition: "all 0.1s",
+              transition: "background 0.15s",
               fontFamily: "'Inter', sans-serif",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = "translate(2px,2px)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #000";
+              if (!loading) (e.currentTarget as HTMLElement).style.backgroundColor = "#002d44";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLElement).style.transform = "translate(0,0)";
-              (e.currentTarget as HTMLElement).style.boxShadow = "5px 5px 0px #000";
+              (e.currentTarget as HTMLElement).style.backgroundColor = loading ? "#ccc" : "#003F5C";
             }}
           >
             {loading ? "ВХОД…" : "ВОЙТИ"}
@@ -224,7 +223,7 @@ export function LoginModal({ onClose, onSuccess }: LoginModalProps) {
             <a
               href="#register"
               onClick={onClose}
-              style={{ color: "#000", fontWeight: 900, textDecoration: "underline" }}
+              style={{ color: "#003F5C", fontWeight: 900, textDecoration: "underline" }}
             >
               ЗАПОЛНИ ЗАЯВКУ
             </a>

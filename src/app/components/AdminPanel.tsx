@@ -31,16 +31,24 @@ type StatusFilter = "all" | "review" | "revision" | "approved" | "rejected" | "r
 type SortMode = "newest" | "oldest" | "name_asc" | "name_desc";
 
 const statusLabels: Record<string, { label: string; color: string; text: string }> = {
-  review:   { label: "НА ПРОВЕРКЕ",  color: "#ED7C30", text: "#000" },
-  revision: { label: "НА ДОРАБОТКЕ", color: "#F59E0B", text: "#000" },
+  review:   { label: "НА ПРОВЕРКЕ",  color: "#879E82", text: "#003F5C" },
+  revision: { label: "НА ДОРАБОТКЕ", color: "#F59E0B", text: "#003F5C" },
   approved: { label: "ОДОБРЕНО",     color: "#16A34A", text: "#fff" },
   rejected: { label: "ОТКЛОНЕНО",    color: "#DC2626", text: "#fff" },
   reserve:  { label: "В РЕЗЕРВЕ",    color: "#6366F1", text: "#fff" },
 };
 
 const benefitLabels: Record<string, string> = {
-  low_income: "Малоимущие", svo: "Дети участников СВО", orphan: "Дети-сироты",
-  disabled: "Дети-инвалиды", large_family: "Многодетные семьи", none: "Без льгот",
+  low_income: "Малоимущие",
+  svo: "Дети участников СВО",
+  orphan: "Дети-сироты",
+  disabled: "Дети-инвалиды",
+  ovz: "Дети ОВЗ",
+  combat_veteran: "Ветераны БД",
+  kmns: "КМНС",
+  preventive: "Профилактический учёт",
+  large_family: "Многодетные семьи",
+  none: "Без льгот",
 };
 
 function formatDate(d: string): string {
@@ -60,14 +68,14 @@ function toApplication(a: ApplicationData): Application {
 }
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "10px 12px", border: "2px solid #000", fontSize: 14,
+  width: "100%", padding: "10px 12px", border: "none", borderBottom: "1.5px solid rgba(135,158,130,0.4)", fontSize: 14,
   fontFamily: "'Inter', sans-serif", outline: "none", boxSizing: "border-box",
 };
 
 const btnStyle = (bg: string, color: string): React.CSSProperties => ({
-  padding: "10px 20px", border: "2px solid #000", backgroundColor: bg, color,
+  padding: "10px 20px", border: "none", backgroundColor: bg, color,
   fontWeight: 900, fontSize: 12, cursor: "pointer", letterSpacing: "0.5px",
-  boxShadow: "3px 3px 0px #000", fontFamily: "'Inter', sans-serif", transition: "all 0.1s",
+  boxShadow: "none", fontFamily: "'Inter', sans-serif", transition: "all 0.1s",
 });
 
 export function AdminPanel({ onBack }: AdminPanelProps) {
@@ -219,11 +227,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   if (!authed) {
     return (
       <div style={{ minHeight: "100vh", backgroundColor: "#fff", fontFamily: "'Inter', sans-serif", display: "flex", flexDirection: "column" }}>
-        <div style={{ backgroundColor: "#000", borderBottom: "2px solid #000", padding: "20px 24px" }}>
+        <div style={{ backgroundColor: "#003F5C", borderBottom: "none", padding: "20px 24px" }}>
           <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <div style={{ width: 36, height: 36, backgroundColor: "#ED7C30", border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <span style={{ color: "#000", fontWeight: 900, fontSize: 11 }}>ТОП</span>
+              <div style={{ width: 36, height: 36, backgroundColor: "#879E82", border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ color: "#003F5C", fontWeight: 900, fontSize: 11 }}>ТОП</span>
               </div>
               <div style={{ color: "#fff", fontWeight: 900, fontSize: 16, letterSpacing: "0.5px" }}>ПАНЕЛЬ АДМИНИСТРАТОРА</div>
             </div>
@@ -233,8 +241,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           </div>
         </div>
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
-          <div style={{ width: "100%", maxWidth: 400, border: "2px solid #000", boxShadow: "8px 8px 0px #000" }}>
-            <div style={{ backgroundColor: "#000", padding: "20px 28px", borderBottom: "2px solid #000" }}>
+          <div style={{ width: "100%", maxWidth: 400, border: "none", boxShadow: "none" }}>
+            <div style={{ backgroundColor: "#003F5C", padding: "20px 28px", borderBottom: "none" }}>
               <div style={{ color: "rgba(255,255,255,0.5)", fontSize: 12, fontWeight: 900, letterSpacing: "1px", marginBottom: 4 }}>ДОСТУП ОГРАНИЧЕН</div>
               <div style={{ color: "#fff", fontSize: 22, fontWeight: 900, letterSpacing: "-0.5px" }}>ВХОД ДЛЯ АДМИНИСТРАТОРА</div>
             </div>
@@ -258,7 +266,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 )}
               </div>
               <button onClick={handleLogin} disabled={loading}
-                style={{ width: "100%", padding: "14px", fontSize: 15, fontWeight: 900, color: "#fff", backgroundColor: "#000", border: "2px solid #000", boxShadow: "5px 5px 0px #ED7C30", cursor: loading ? "not-allowed" : "pointer", letterSpacing: "1px", fontFamily: "'Inter', sans-serif" }}>
+                style={{ width: "100%", padding: "14px", fontSize: 15, fontWeight: 900, color: "#fff", backgroundColor: "#003F5C", border: "none", boxShadow: "none", cursor: loading ? "not-allowed" : "pointer", letterSpacing: "1px", fontFamily: "'Inter', sans-serif" }}>
                 {loading ? "ЗАГРУЗКА…" : "ВОЙТИ В ПАНЕЛЬ"}
               </button>
             </div>
@@ -270,15 +278,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
   /* ─── Main panel ─── */
   return (
-    <div style={{ minHeight: "100vh", backgroundColor: "#f5f5f5", fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ minHeight: "100vh", backgroundColor: "#eeeadf", fontFamily: "'Inter', sans-serif" }}>
 
       {/* Header */}
-      <div style={{ backgroundColor: "#000", borderBottom: "2px solid #000", padding: mobile ? "0 12px" : "0 24px", position: "sticky", top: 0, zIndex: 100 }}>
+      <div style={{ backgroundColor: "#003F5C", borderBottom: "none", padding: mobile ? "0 12px" : "0 24px", position: "sticky", top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: 1400, margin: "0 auto", height: mobile ? 52 : 60, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: mobile ? 8 : 16, minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: mobile ? 6 : 10, minWidth: 0 }}>
-              <div style={{ width: 28, height: 28, backgroundColor: "#ED7C30", border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <span style={{ color: "#000", fontWeight: 900, fontSize: 9 }}>ТОП</span>
+              <div style={{ width: 28, height: 28, backgroundColor: "#879E82", border: "2px solid #fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <span style={{ color: "#003F5C", fontWeight: 900, fontSize: 9 }}>ТОП</span>
               </div>
               <span style={{ color: "#fff", fontWeight: 900, fontSize: mobile ? 12 : 15, letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
                 {mobile ? "АДМИН" : "ПАНЕЛЬ АДМИНИСТРАТОРА"}
@@ -295,7 +303,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             <button onClick={() => loadApps(adminPw)} style={{ padding: mobile ? "4px 8px" : "6px 14px", border: "2px solid rgba(255,255,255,0.3)", backgroundColor: "transparent", color: "#fff", fontWeight: 900, fontSize: mobile ? 10 : 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
               ↻{mobile ? "" : " ОБНОВИТЬ"}
             </button>
-            <button onClick={onBack} style={{ padding: mobile ? "4px 8px" : "6px 14px", border: "2px solid #ED7C30", backgroundColor: "transparent", color: "#ED7C30", fontWeight: 900, fontSize: mobile ? 10 : 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
+            <button onClick={onBack} style={{ padding: mobile ? "4px 8px" : "6px 14px", border: "2px solid #879E82", backgroundColor: "transparent", color: "#879E82", fontWeight: 900, fontSize: mobile ? 10 : 12, cursor: "pointer", fontFamily: "'Inter', sans-serif" }}>
               ←{mobile ? "" : " НА ГЛАВНУЮ"}
             </button>
           </div>
@@ -307,8 +315,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         {/* Status counters */}
         <div style={{ display: "grid", gridTemplateColumns: mobile ? "repeat(3, 1fr)" : "repeat(6, 1fr)", gap: mobile ? 8 : 12, marginBottom: mobile ? 16 : 24 }}>
           {([
-            { key: "all",      label: "ВСЕГО",        bg: "#fff",     border: "#000" },
-            { key: "review",   label: "НА ПРОВЕРКЕ",  bg: "#F8EDAD",  border: "#000" },
+            { key: "all",      label: "ВСЕГО",        bg: "#fff",     border: "#003F5C" },
+            { key: "review",   label: "НА ПРОВЕРКЕ",  bg: "#F0EAD2",  border: "#003F5C" },
             { key: "revision", label: "НА ДОРАБОТКЕ", bg: "#FEF3C7",  border: "#F59E0B" },
             { key: "approved", label: "ОДОБРЕНО",     bg: "#DCFCE7",  border: "#16A34A" },
             { key: "reserve",  label: "В РЕЗЕРВЕ",    bg: "#EEF2FF",  border: "#6366F1" },
@@ -316,19 +324,23 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
           ] as const).map((stat) => (
             <div key={stat.key} onClick={() => setFilterStatus(stat.key as StatusFilter)}
               style={{
-                border: `2px solid ${filterStatus === stat.key ? "#000" : stat.border}`,
-                boxShadow: filterStatus === stat.key ? "3px 3px 0px #000" : "2px 2px 0px #ccc",
-                backgroundColor: stat.bg, padding: mobile ? "10px 12px" : "16px 20px", cursor: "pointer",
-                transform: filterStatus === stat.key ? "translate(-1px,-1px)" : "none", transition: "all 0.1s",
+                border: "none",
+                boxShadow: "none",
+                backgroundColor: filterStatus === stat.key ? stat.bg : "#faf8f3",
+                padding: mobile ? "10px 12px" : "16px 20px", cursor: "pointer",
+                opacity: filterStatus === stat.key ? 1 : 0.7,
+                transition: "all 0.15s",
+                outline: filterStatus === stat.key ? `2px solid ${stat.border}` : "none",
+                outlineOffset: "-2px",
               }}>
               <div style={{ fontSize: mobile ? 8 : 10, fontWeight: 900, letterSpacing: "1px", color: "#666", marginBottom: mobile ? 4 : 6 }}>{stat.label}</div>
-              <div style={{ fontSize: mobile ? 22 : 32, fontWeight: 900, lineHeight: 1, color: "#000" }}>{counts[stat.key] ?? 0}</div>
+              <div style={{ fontSize: mobile ? 22 : 32, fontWeight: 900, lineHeight: 1, color: "#003F5C" }}>{counts[stat.key] ?? 0}</div>
             </div>
           ))}
         </div>
 
         {/* Filters bar */}
-        <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 10 : 12, marginBottom: mobile ? 16 : 24, padding: mobile ? "12px" : "16px 20px", border: "2px solid #000", backgroundColor: "#fff" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 10 : 12, marginBottom: mobile ? 16 : 24, padding: mobile ? "12px" : "16px 20px", border: "none", backgroundColor: "#fff" }}>
           <div style={{ flex: mobile ? "1 1 100%" : "1 1 250px" }}>
             <label style={{ display: "block", fontSize: 10, fontWeight: 900, letterSpacing: "1px", color: "#888", marginBottom: 4 }}>ПОИСК</label>
             <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
@@ -375,7 +387,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 8 : 10, marginBottom: mobile ? 16 : 24 }}>
           {!mobile && <span style={{ display: "flex", alignItems: "center", fontSize: 12, fontWeight: 900, color: "#555", letterSpacing: "0.5px", marginRight: 4 }}>ВЫГРУЗКА В EXCEL:</span>}
           {([
-            { mode: "all",      label: "ВСЕ ЗАЯВКИ",   bg: "#fff",     color: "#000" },
+            { mode: "all",      label: "ВСЕ ЗАЯВКИ",   bg: "#fff",     color: "#003F5C" },
             { mode: "approved", label: "ОДОБРЕННЫЕ",    bg: "#DCFCE7",  color: "#166534" },
             { mode: "reserve",  label: "В РЕЗЕРВЕ",     bg: "#EEF2FF",  color: "#4338CA" },
             { mode: "rejected", label: "ОТКЛОНЁННЫЕ",   bg: "#FEF2F2",  color: "#991B1B" },
@@ -383,9 +395,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             <button key={btn.mode} onClick={() => exportToExcel(btn.mode)}
               disabled={apps.length === 0}
               style={{
-                padding: "8px 16px", border: "2px solid #000", backgroundColor: btn.bg, color: btn.color,
+                padding: "8px 16px", border: "none", backgroundColor: btn.bg, color: btn.color,
                 fontWeight: 900, fontSize: 11, cursor: apps.length === 0 ? "not-allowed" : "pointer",
-                letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif", boxShadow: "2px 2px 0px #000",
+                letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif", boxShadow: "none",
                 opacity: apps.length === 0 ? 0.4 : 1, transition: "all 0.1s", display: "flex", alignItems: "center", gap: 6,
               }}>
               <span style={{ fontSize: 14 }}>📊</span> {btn.label}
@@ -394,8 +406,8 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         </div>
 
         {/* Application list */}
-        <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000", backgroundColor: "#fff" }}>
-          <div style={{ backgroundColor: "#000", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ border: "none", boxShadow: "none", backgroundColor: "#fff" }}>
+          <div style={{ backgroundColor: "#003F5C", padding: "16px 24px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span style={{ color: "#fff", fontWeight: 900, fontSize: 15, letterSpacing: "0.5px" }}>
               ЗАЯВКИ {filterStatus !== "all" && `— ${statusLabels[filterStatus]?.label}`}
             </span>
@@ -426,7 +438,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                 const shiftLabel = app.shift ? `${app.shift} смена` : "—";
 
                 return (
-                  <div key={app.id} style={{ borderBottom: !isLast ? "2px solid #000" : "none" }}>
+                  <div key={app.id} style={{ borderBottom: !isLast ? "none" : "none" }}>
                     {/* Row header */}
                     <div
                       style={{
@@ -436,7 +448,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         flexDirection: mobile ? "column" : "row",
                         gap: mobile ? 8 : 14,
                         cursor: "pointer",
-                        backgroundColor: isExpanded ? "#fafafa" : "#fff",
+                        backgroundColor: isExpanded ? "#faf8f3" : "#fff",
                         transition: "background 0.1s",
                       }}
                       onClick={() => { setExpandedId(isExpanded ? null : app.id); if (isEditing && !isExpanded) { setEditingId(null); setEditForm({}); } }}
@@ -446,10 +458,10 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%" }}>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
                               <span style={{ fontSize: 11, fontWeight: 900, color: "#aaa" }}>#{idx + 1}</span>
-                              <span style={{ fontWeight: 900, fontSize: 14, color: "#000", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{app.fullName || "—"}</span>
+                              <span style={{ fontWeight: 900, fontSize: 14, color: "#003F5C", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{app.fullName || "—"}</span>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                              <div style={{ backgroundColor: st.color, border: "2px solid #000", padding: "2px 8px", fontSize: 9, fontWeight: 900, color: st.text, letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
+                              <div style={{ backgroundColor: st.color, border: "none", padding: "2px 8px", fontSize: 9, fontWeight: 900, color: st.text, letterSpacing: "0.5px", whiteSpace: "nowrap" }}>
                                 {st.label}
                               </div>
                               <div style={{ fontSize: 12, color: "#aaa", transition: "transform 0.2s", transform: isExpanded ? "rotate(180deg)" : "none" }}>▼</div>
@@ -463,7 +475,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <>
                           <div style={{ fontSize: 12, fontWeight: 900, color: "#aaa", width: 28, flexShrink: 0 }}>#{idx + 1}</div>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 900, fontSize: 14, color: "#000", marginBottom: 2 }}>{app.fullName || "—"}</div>
+                            <div style={{ fontWeight: 900, fontSize: 14, color: "#003F5C", marginBottom: 2 }}>{app.fullName || "—"}</div>
                             <div style={{ fontSize: 11, color: "#888", fontWeight: 700 }}>{app.email} · {app.phone}</div>
                           </div>
                           <div style={{ fontSize: 11, fontWeight: 700, color: "#555", flexShrink: 0, textAlign: "right" }}>
@@ -471,7 +483,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             <div style={{ color: "#aaa" }}>{app.grade ? `${app.grade} кл.` : ""} · {shiftLabel}</div>
                           </div>
                           <div style={{ fontSize: 11, color: "#aaa", fontWeight: 700, flexShrink: 0 }}>{formatDate(app.createdAt)}</div>
-                          <div style={{ backgroundColor: st.color, border: "2px solid #000", padding: "3px 10px", fontSize: 10, fontWeight: 900, color: st.text, letterSpacing: "0.5px", flexShrink: 0, whiteSpace: "nowrap" }}>
+                          <div style={{ backgroundColor: st.color, border: "none", padding: "3px 10px", fontSize: 10, fontWeight: 900, color: st.text, letterSpacing: "0.5px", flexShrink: 0, whiteSpace: "nowrap" }}>
                             {st.label}
                           </div>
                           <div style={{ fontSize: 13, color: "#aaa", flexShrink: 0, transition: "transform 0.2s", transform: isExpanded ? "rotate(180deg)" : "none" }}>▼</div>
@@ -481,7 +493,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                     {/* Expanded details */}
                     {isExpanded && (
-                      <div style={{ backgroundColor: "#fafafa", borderTop: "2px dashed #ccc", padding: mobile ? "16px 12px" : "24px" }}>
+                      <div style={{ backgroundColor: "#faf8f3", borderTop: "2px dashed #ccc", padding: mobile ? "16px 12px" : "24px" }}>
 
                         {/* Data grid (view or edit) */}
                         <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "repeat(3, 1fr)", gap: mobile ? 12 : 16, marginBottom: mobile ? 16 : 24 }}>
@@ -522,13 +534,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     style={{ ...inputStyle, padding: "8px 10px", fontSize: 13 }} onClick={(e) => e.stopPropagation()} />
                                 )
                               ) : (
-                                <div style={{ fontSize: 14, fontWeight: 700, color: "#000" }}>{f.value || "—"}</div>
+                                <div style={{ fontSize: 14, fontWeight: 700, color: "#003F5C" }}>{f.value || "—"}</div>
                               )}
                             </div>
                           ))}
                           <div>
                             <div style={{ fontSize: 10, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 4 }}>ЛЬГОТЫ</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "#000" }}>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "#003F5C" }}>
                               {app.benefits?.length ? app.benefits.map((b) => benefitLabels[b] || b).join(", ") : "Без льгот"}
                             </div>
                           </div>
@@ -552,7 +564,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         {app.revisionComment && (
                           <div style={{ marginBottom: 24, padding: "12px 16px", backgroundColor: "#FEF3C7", border: "2px solid #F59E0B" }}>
                             <div style={{ fontSize: 10, fontWeight: 900, color: "#92400E", letterSpacing: "0.5px", marginBottom: 6 }}>КОММЕНТАРИЙ ДЛЯ ЗАЯВИТЕЛЯ</div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "#000", whiteSpace: "pre-wrap" }}>{app.revisionComment}</div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "#003F5C", whiteSpace: "pre-wrap" }}>{app.revisionComment}</div>
                           </div>
                         )}
 
@@ -561,12 +573,12 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                           let paths: string[] = [];
                           try { if (app.attachments) { const p = JSON.parse(app.attachments); if (Array.isArray(p)) paths = p.filter((x): x is string => typeof x === "string" && x.length > 0); } } catch {}
                           return paths.length > 0 ? (
-                            <div style={{ marginBottom: 24, padding: "16px 20px", backgroundColor: "#fff", border: "2px solid #000" }}>
+                            <div style={{ marginBottom: 24, padding: "16px 20px", backgroundColor: "#fff", border: "none" }}>
                               <div style={{ fontSize: 10, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 10 }}>ФАЙЛЫ ЗАЯВКИ ({paths.length})</div>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                                 {paths.map((path, i) => (
                                   <a key={`${app.id}-${i}`} href={getFileUrl(path)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: "2px solid #000", backgroundColor: "#F8EDAD", color: "#000", fontSize: 12, fontWeight: 700, textDecoration: "none", fontFamily: "'Inter', sans-serif" }}>
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: "none", backgroundColor: "#F0EAD2", color: "#003F5C", fontSize: 12, fontWeight: 700, textDecoration: "none", fontFamily: "'Inter', sans-serif" }}>
                                     📎 {path.split("/").pop() || `Файл ${i + 1}`}
                                   </a>
                                 ))}
@@ -579,7 +591,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                         <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 8 : 10, alignItems: "flex-start" }}>
                           {!isEditing && (
                             <button onClick={(e) => { e.stopPropagation(); startEdit(app); }}
-                              style={btnStyle("#fff", "#000")}>
+                              style={btnStyle("#fff", "#003F5C")}>
                               ✎ РЕДАКТИРОВАТЬ
                             </button>
                           )}
@@ -617,7 +629,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                 onClick={(e) => e.stopPropagation()} />
                               <div style={{ display: "flex", gap: 8 }}>
                                 <button onClick={(e) => { e.stopPropagation(); handleUpdateStatus(app.id, app.dbId, "revision", revisionComment || "Требуется доработка."); }}
-                                  style={btnStyle("#F59E0B", "#000")}>
+                                  style={btnStyle("#F59E0B", "#003F5C")}>
                                   ОТПРАВИТЬ НА ДОРАБОТКУ
                                 </button>
                                 <button onClick={(e) => { e.stopPropagation(); setRevisionTargetId(null); setRevisionComment(""); }}
@@ -628,7 +640,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             </div>
                           ) : app.status !== "revision" ? (
                             <button onClick={(e) => { e.stopPropagation(); setRevisionTargetId(app.id); setRevisionComment(app.revisionComment || ""); }}
-                              style={btnStyle("#F59E0B", "#000")}>
+                              style={btnStyle("#F59E0B", "#003F5C")}>
                               ↩ НА ДОРАБОТКУ
                             </button>
                           ) : null}

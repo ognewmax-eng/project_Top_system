@@ -10,7 +10,11 @@ const benefitCards = [
   { id: "low_income", label: "МАЛОИМУЩИЕ", desc: "Семьи с доходом ниже прожиточного минимума" },
   { id: "svo", label: "ДЕТИ УЧАСТНИКОВ СВО", desc: "Дети военнослужащих, участвующих в специальной военной операции" },
   { id: "orphan", label: "ДЕТИ-СИРОТЫ", desc: "Дети, оставшиеся без попечения родителей" },
-  { id: "disabled", label: "ДЕТИ-ИНВАЛИДЫ", desc: "Дети с ограниченными возможностями здоровья" },
+  { id: "disabled", label: "ДЕТИ-ИНВАЛИДЫ", desc: "Дети с установленной инвалидностью" },
+  { id: "ovz", label: "ДЕТИ ОВЗ", desc: "Дети с ограниченными возможностями здоровья (ОВЗ)" },
+  { id: "combat_veteran", label: "ВЕТЕРАНЫ БД", desc: "Дети ветеранов боевых действий" },
+  { id: "kmns", label: "КМНС", desc: "Дети, относящиеся к коренным малочисленным народам Севера" },
+  { id: "preventive", label: "ПРОФИЛАКТИЧЕСКИЙ УЧЁТ", desc: "Дети, состоящие на профилактических учётах" },
   { id: "large_family", label: "МНОГОДЕТНЫЕ СЕМЬИ", desc: "Семьи с тремя и более детьми" },
   { id: "none", label: "БЕЗ ЛЬГОТ", desc: "Участие без дополнительных льгот" },
 ];
@@ -32,18 +36,33 @@ const schoolOptions = [
 ];
 
 const documentSlots = [
-  { key: "passport", label: "Паспорт" },
-  { key: "no_criminal", label: "Справка об отсутствии судимости" },
+  { key: "child_passport", label: "Паспорт ребёнка (при наличии)" },
+  { key: "birth_cert", label: "Свидетельство о рождении ребёнка" },
   { key: "snils", label: "СНИЛС" },
   { key: "inn", label: "ИНН" },
-  { key: "birth_cert", label: "Свидетельство о рождении" },
-  { key: "parent_passport", label: "Паспорт родителя (совпадает с заявлением)" },
   { key: "study_ref", label: "Справка с места учёбы" },
+  { key: "benefit_proof", label: "Подтверждение льготной категории" },
+  { key: "no_criminal", label: "Справка об отсутствии судимости (либо подтверждение, что справка заказана)" },
+  { key: "draft_card", label: "Приписное удостоверение для юношей" },
+  { key: "commission_application", label: "Заявление в межведомственную комиссию" },
   { key: "pd_consent", label: "Согласие на обработку персональных данных" },
-  { key: "job_application", label: "Заявление о приёме на работу" },
-  { key: "benefit_proof", label: "Подтверждение наличия льготной категории" },
-  { key: "name_change", label: "Свидетельство о смене фамилии родителя" },
+  { key: "bank_details", label: "Банковские реквизиты" },
+  { key: "other_docs", label: "Иные документы" },
 ] as const;
+
+const requiredDocKeys: DocKey[] = [
+  "child_passport",
+  "birth_cert",
+  "snils",
+  "inn",
+  "study_ref",
+  "benefit_proof",
+  "no_criminal",
+  "draft_card",
+  "commission_application",
+  "pd_consent",
+  "bank_details",
+];
 
 type DocKey = typeof documentSlots[number]["key"];
 
@@ -111,7 +130,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const inputStyle: React.CSSProperties = {
     width: "100%",
     padding: "12px 16px",
-    border: "2px solid #000",
+    border: "none",
+    borderBottom: "1.5px solid rgba(135,158,130,0.5)",
     backgroundColor: "#fff",
     fontSize: 15,
     fontFamily: "'Inter', sans-serif",
@@ -126,7 +146,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     fontWeight: 900,
     letterSpacing: "0.5px",
     marginBottom: 8,
-    color: "#000",
+    color: "#003F5C",
   };
 
   const fieldStyle: React.CSSProperties = {
@@ -137,8 +157,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   const sectionHeaderStyle = (bg: string): React.CSSProperties => ({
     backgroundColor: bg,
     padding: mobile ? "14px 20px" : "16px 32px",
-    borderBottom: "2px solid #000",
-    borderTop: "2px solid #000",
+    borderBottom: "none",
+    borderTop: "none",
   });
 
   const sectionHeaderText = (color: string): React.CSSProperties => ({
@@ -157,14 +177,14 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
   return (
     <section
       id="register"
-      style={{ backgroundColor: "#fff", borderBottom: "2px solid #000", fontFamily: "'Inter', sans-serif" }}
+      style={{ backgroundColor: "#fff", borderBottom: "none", fontFamily: "'Inter', sans-serif" }}
     >
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: mobile ? "48px 16px" : "80px 24px" }}>
         {/* Title */}
         <div style={{ marginBottom: 48 }}>
           <span
             style={{
-              display: "inline-block", backgroundColor: "#ED7C30", border: "2px solid #000",
+              display: "inline-block", backgroundColor: "#879E82", border: "none",
               padding: "4px 12px", fontSize: 13, fontWeight: 900, letterSpacing: "1px", marginBottom: 16,
             }}
           >
@@ -172,7 +192,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </span>
           <h2
             style={{
-              fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 900, color: "#000",
+              fontSize: "clamp(36px, 5vw, 60px)", fontWeight: 900, color: "#003F5C",
               lineHeight: 1, letterSpacing: "-1px", margin: 0,
             }}
           >
@@ -180,11 +200,11 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </h2>
         </div>
 
-        <div style={{ border: "2px solid #000", boxShadow: "6px 6px 0px #000" }}>
+        <div style={{ border: "none", boxShadow: "none" }}>
 
           {/* ═══════ SECTION 1: Account ═══════ */}
-          <div style={{ backgroundColor: "#F8EDAD", padding: mobile ? "14px 20px" : "16px 32px", borderBottom: "2px solid #000" }}>
-            <span style={sectionHeaderText("#000")}>РЕГИСТРАЦИЯ ЛИЧНОГО КАБИНЕТА</span>
+          <div style={{ backgroundColor: "#F0EAD2", padding: mobile ? "14px 20px" : "16px 32px", borderBottom: "none" }}>
+            <span style={sectionHeaderText("#003F5C")}>РЕГИСТРАЦИЯ ЛИЧНОГО КАБИНЕТА</span>
           </div>
           <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
             <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 16 : 20 }}>
@@ -220,8 +240,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </div>
 
           {/* ═══════ SECTION 2: Personal Data ═══════ */}
-          <div style={sectionHeaderStyle("#ED7C30")}>
-            <span style={sectionHeaderText("#000")}>ЛИЧНЫЕ ДАННЫЕ</span>
+          <div style={sectionHeaderStyle("#879E82")}>
+            <span style={sectionHeaderText("#003F5C")}>ЛИЧНЫЕ ДАННЫЕ</span>
           </div>
           <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
             <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 16 : 20 }}>
@@ -271,8 +291,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </div>
 
           {/* ═══════ SECTION 3: Benefits ═══════ */}
-          <div style={sectionHeaderStyle("#F8EDAD")}>
-            <span style={sectionHeaderText("#000")}>ВЫБОР ЛЬГОТ</span>
+          <div style={sectionHeaderStyle("#F0EAD2")}>
+            <span style={sectionHeaderText("#003F5C")}>ВЫБОР ЛЬГОТ</span>
           </div>
           <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
             <p style={{ fontSize: 13, color: "#666", marginBottom: 20, marginTop: 0 }}>Выберите подходящую категорию</p>
@@ -284,16 +304,16 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                     key={benefit.id}
                     onClick={() => toggleBenefit(benefit.id)}
                     style={{
-                      border: "2px solid #000", padding: "16px 20px", cursor: "pointer",
-                      backgroundColor: isSelected ? "#ED7C30" : "#fff",
-                      boxShadow: isSelected ? "4px 4px 0px #000" : "2px 2px 0px #000",
-                      transition: "all 0.1s", display: "flex", flexDirection: "column", gap: 8,
-                      transform: isSelected ? "translate(-1px,-1px)" : "none",
+                      border: "none", padding: "16px 20px", cursor: "pointer",
+                      backgroundColor: isSelected ? "#879E82" : "#F0EAD2",
+                      boxShadow: "none",
+                      transition: "all 0.15s", display: "flex", flexDirection: "column", gap: 8,
+                      opacity: isSelected ? 1 : 0.85,
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
                       <span style={{ fontWeight: 900, fontSize: 13, letterSpacing: "0.3px" }}>{benefit.label}</span>
-                      <div style={{ width: 20, height: 20, border: "2px solid #000", backgroundColor: isSelected ? "#000" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginLeft: 8 }}>
+                      <div style={{ width: 20, height: 20, border: "none", backgroundColor: isSelected ? "#003F5C" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginLeft: 8 }}>
                         {isSelected && checkSvg}
                       </div>
                     </div>
@@ -305,8 +325,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </div>
 
           {/* ═══════ SECTION 4: Shifts ═══════ */}
-          <div style={sectionHeaderStyle("#ED7C30")}>
-            <span style={sectionHeaderText("#000")}>ВЫБОР СМЕНЫ</span>
+          <div style={sectionHeaderStyle("#879E82")}>
+            <span style={sectionHeaderText("#003F5C")}>ВЫБОР СМЕНЫ</span>
           </div>
           <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
             <p style={{ fontSize: 13, color: "#666", marginBottom: 20, marginTop: 0 }}>Выберите смену для участия</p>
@@ -318,16 +338,16 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                     key={opt.id}
                     onClick={() => setForm((f) => ({ ...f, shift: opt.id }))}
                     style={{
-                      border: "2px solid #000", padding: "16px 20px", cursor: "pointer",
-                      backgroundColor: isSelected ? "#ED7C30" : "#fff",
-                      boxShadow: isSelected ? "4px 4px 0px #000" : "2px 2px 0px #000",
-                      transition: "all 0.1s", display: "flex", flexDirection: "column", gap: 6,
-                      transform: isSelected ? "translate(-1px,-1px)" : "none",
+                      border: "none", padding: "16px 20px", cursor: "pointer",
+                      backgroundColor: isSelected ? "#879E82" : "#F0EAD2",
+                      boxShadow: "none",
+                      transition: "all 0.15s", display: "flex", flexDirection: "column", gap: 6,
+                      opacity: isSelected ? 1 : 0.85,
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                       <span style={{ fontWeight: 900, fontSize: 13, letterSpacing: "0.3px" }}>{opt.label}</span>
-                      <div style={{ width: 20, height: 20, border: "2px solid #000", backgroundColor: isSelected ? "#000" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                      <div style={{ width: 20, height: 20, border: "none", backgroundColor: isSelected ? "#003F5C" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         {isSelected && checkSvg}
                       </div>
                     </div>
@@ -339,13 +359,36 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </div>
 
           {/* ═══════ SECTION 5: Documents ═══════ */}
-          <div style={sectionHeaderStyle("#000")}>
+          <div style={sectionHeaderStyle("#003F5C")}>
             <span style={sectionHeaderText("#fff")}>ДОКУМЕНТЫ</span>
           </div>
           <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
-            <p style={{ fontSize: 13, color: "#666", marginBottom: 20, marginTop: 0 }}>
+            <p style={{ fontSize: 13, color: "#666", marginBottom: 12, marginTop: 0 }}>
               Загрузите необходимые документы (PDF, JPG, PNG). Каждый документ загружается отдельно.
             </p>
+            <div
+              style={{
+                marginBottom: 20,
+                padding: "10px 12px",
+                border: "1px dashed rgba(0,63,92,0.25)",
+                backgroundColor: "#F0EAD2",
+                fontSize: 13,
+                fontWeight: 700,
+                display: "flex",
+                flexDirection: mobile ? "column" : "row",
+                gap: 6,
+              }}
+            >
+              <span>Шаблоны обязательных документов для заполнения можно скачать по ссылке:</span>
+              <a
+                href="https://disk.yandex.ru/d/tq_-HiC6wB7wRg"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "#003F5C", textDecoration: "underline" }}
+              >
+                ОТКРЫТЬ ШАБЛОНЫ НА ЯНДЕКС.ДИСКЕ
+              </a>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {documentSlots.map((slot, idx) => {
                 const file = documents[slot.key];
@@ -358,8 +401,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                       flexDirection: mobile ? "column" : "row",
                       gap: mobile ? 10 : 16,
                       padding: mobile ? "12px" : "12px 16px",
-                      border: "2px solid #000",
-                      backgroundColor: file ? "#f0fdf4" : "#fafafa",
+                      border: "none",
+                      backgroundColor: file ? "#f0fdf4" : "#faf8f3",
                       transition: "background 0.15s",
                     }}
                   >
@@ -368,7 +411,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                         {idx + 1}.
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: mobile ? 13 : 14, fontWeight: 700, color: "#000", marginBottom: 2 }}>{slot.label}</div>
+                        <div style={{ fontSize: mobile ? 13 : 14, fontWeight: 700, color: "#003F5C", marginBottom: 2 }}>{slot.label}</div>
                         {file ? (
                           <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {file.name}
@@ -384,8 +427,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                         onClick={() => docInputRefs.current[slot.key]?.click()}
                         style={{
                           padding: "6px 16px",
-                          border: "2px solid #000",
-                          backgroundColor: file ? "#fff" : "#F8EDAD",
+                          border: "none",
+                          backgroundColor: file ? "#fff" : "#F0EAD2",
                           fontWeight: 900,
                           fontSize: 12,
                           cursor: "pointer",
@@ -433,15 +476,15 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           </div>
 
           {/* ═══════ SECTION 6: Consent ═══════ */}
-          <div style={{ borderTop: "2px solid #000", padding: mobile ? "20px 16px" : "28px 32px" }}>
+          <div style={{ borderTop: "none", padding: mobile ? "20px 16px" : "28px 32px" }}>
             <div
               style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 28, cursor: "pointer" }}
               onClick={() => setAgreed(!agreed)}
             >
               <div
                 style={{
-                  width: 24, height: 24, border: "2px solid #000",
-                  backgroundColor: agreed ? "#000" : "#fff",
+                  width: 24, height: 24, border: "1.5px solid rgba(0,63,92,0.35)",
+                  backgroundColor: agreed ? "#003F5C" : "#fff",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   flexShrink: 0, marginTop: 1,
                 }}
@@ -452,7 +495,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                   </svg>
                 )}
               </div>
-              <span style={{ fontSize: 14, lineHeight: 1.5, color: "#000" }}>
+              <span style={{ fontSize: 14, lineHeight: 1.5, color: "#003F5C" }}>
                 Я даю согласие на обработку персональных данных в соответствии с Федеральным законом №152-ФЗ «О персональных данных» и принимаю условия участия в программе «Трудовое лето».
               </span>
             </div>
@@ -474,6 +517,12 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                 if (form.password !== form.confirmPassword) { setPasswordError("Пароли не совпадают"); return; }
                 if (!form.fullName.trim()) { setSubmitError("Укажите ФИО"); return; }
                 if (!form.shift) { setSubmitError("Выберите смену для участия"); return; }
+
+                const missing = requiredDocKeys.filter((key) => !documents[key]);
+                if (missing.length > 0) {
+                  setSubmitError("Пожалуйста, загрузите все обязательные документы (пункты 1–11).");
+                  return;
+                }
 
                 setSubmitting(true);
                 const payload = { ...form, benefits: JSON.stringify(selectedBenefits) };
@@ -510,22 +559,20 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
               disabled={!agreed || submitting}
               style={{
                 width: "100%", padding: "20px", fontSize: 18, fontWeight: 900,
-                color: agreed && !submitting ? "#000" : "#999",
-                backgroundColor: agreed && !submitting ? "#ED7C30" : "#f0f0f0",
-                border: `2px solid ${agreed && !submitting ? "#000" : "#ccc"}`,
-                boxShadow: agreed && !submitting ? "5px 5px 0px #000" : "none",
+                color: agreed && !submitting ? "#fff" : "#999",
+                backgroundColor: agreed && !submitting ? "#003F5C" : "#f0f0f0",
+                border: "none",
+                boxShadow: "none",
                 cursor: agreed && !submitting ? "pointer" : "not-allowed",
-                letterSpacing: "1px", transition: "all 0.1s", fontFamily: "'Inter', sans-serif",
+                letterSpacing: "1px", transition: "all 0.15s", fontFamily: "'Inter', sans-serif",
               }}
               onMouseEnter={(e) => {
                 if (agreed && !submitting) {
-                  (e.currentTarget as HTMLElement).style.transform = "translate(2px,2px)";
-                  (e.currentTarget as HTMLElement).style.boxShadow = "3px 3px 0px #000";
+                  (e.currentTarget as HTMLElement).style.backgroundColor = "#002d44";
                 }
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.transform = "translate(0,0)";
-                (e.currentTarget as HTMLElement).style.boxShadow = agreed && !submitting ? "5px 5px 0px #000" : "none";
+                (e.currentTarget as HTMLElement).style.backgroundColor = agreed && !submitting ? "#003F5C" : "#f0f0f0";
               }}
             >
               {submitting ? "ОТПРАВКА…" : "ОТПРАВИТЬ ЗАЯВКУ"}

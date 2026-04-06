@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface HeaderProps {
@@ -14,7 +14,7 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
   return (
     <header
       style={{
-        borderBottom: "2px solid #000",
+        borderBottom: "none",
         backgroundColor: "#fff",
         position: "sticky",
         top: 0,
@@ -39,17 +39,17 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
             style={{
               width: 36,
               height: 36,
-              backgroundColor: "#F8EDAD",
-              border: "2px solid #000",
+              backgroundColor: "#F0EAD2",
+              border: "none",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <span style={{ color: "#000", fontWeight: 900, fontSize: 11 }}>ТОП</span>
+            <span style={{ color: "#003F5C", fontWeight: 900, fontSize: 11 }}>ТОП</span>
           </div>
           <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-            <span style={{ fontWeight: 900, fontSize: mobile ? 15 : 18, letterSpacing: "-0.5px", color: "#000" }}>
+            <span style={{ fontWeight: 900, fontSize: mobile ? 15 : 18, letterSpacing: "-0.5px", color: "#003F5C" }}>
               ТРУДОВЫЕ ОТРЯДЫ
             </span>
             <span style={{ fontWeight: 700, fontSize: mobile ? 10 : 12, letterSpacing: "1px", color: "#555" }}>
@@ -62,7 +62,7 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             style={{
-              width: 40, height: 40, border: "2px solid #000", backgroundColor: menuOpen ? "#F8EDAD" : "transparent",
+              width: 40, height: 40, border: "none", backgroundColor: menuOpen ? "#F0EAD2" : "transparent",
               cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: 20, fontFamily: "'Inter', sans-serif",
             }}
@@ -75,7 +75,7 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
               onClick={onAdminClick}
               style={{
                 padding: "8px 16px", fontSize: 12, fontWeight: 900, color: "#fff",
-                backgroundColor: "#000", border: "2px solid #000", boxShadow: "3px 3px 0px #ED7C30",
+                backgroundColor: "#003F5C", border: "none", boxShadow: "none",
                 cursor: "pointer", letterSpacing: "1px", fontFamily: "'Inter', sans-serif",
                 display: "flex", alignItems: "center", gap: 6,
               }}
@@ -85,8 +85,8 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
             <button
               onClick={onCabinetClick}
               style={{
-                padding: "8px 20px", fontSize: 13, fontWeight: 900, color: "#000",
-                backgroundColor: "#F8EDAD", border: "2px solid #000", boxShadow: "3px 3px 0px #000",
+                padding: "8px 20px", fontSize: 13, fontWeight: 900, color: "#003F5C",
+                backgroundColor: "#F0EAD2", border: "none", boxShadow: "none",
                 cursor: "pointer", letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif",
               }}
             >
@@ -97,12 +97,12 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
       </div>
 
       {mobile && menuOpen && (
-        <div style={{ borderTop: "2px solid #000", padding: "12px 24px", display: "flex", flexDirection: "column", gap: 10, backgroundColor: "#fff" }}>
+        <div style={{ borderTop: "none", padding: "12px 24px", display: "flex", flexDirection: "column", gap: 10, backgroundColor: "#fff" }}>
           <button
             onClick={() => { setMenuOpen(false); onAdminClick(); }}
             style={{
               width: "100%", padding: "12px", fontSize: 13, fontWeight: 900, color: "#fff",
-              backgroundColor: "#000", border: "2px solid #000", cursor: "pointer",
+              backgroundColor: "#003F5C", border: "none", cursor: "pointer",
               letterSpacing: "1px", fontFamily: "'Inter', sans-serif",
             }}
           >
@@ -111,8 +111,8 @@ export function Header({ onCabinetClick, onAdminClick }: HeaderProps) {
           <button
             onClick={() => { setMenuOpen(false); onCabinetClick(); }}
             style={{
-              width: "100%", padding: "12px", fontSize: 13, fontWeight: 900, color: "#000",
-              backgroundColor: "#F8EDAD", border: "2px solid #000", cursor: "pointer",
+              width: "100%", padding: "12px", fontSize: 13, fontWeight: 900, color: "#003F5C",
+              backgroundColor: "#F0EAD2", border: "none", cursor: "pointer",
               letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif",
             }}
           >

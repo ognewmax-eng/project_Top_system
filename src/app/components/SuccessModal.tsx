@@ -14,7 +14,7 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
       style={{
         position: "fixed",
         inset: 0,
-        backgroundColor: "rgba(0,0,0,0.7)",
+        backgroundColor: "rgba(0,63,92,0.7)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -28,8 +28,8 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
         onClick={(e) => e.stopPropagation()}
         style={{
           backgroundColor: "#fff",
-          border: "2px solid #000",
-          boxShadow: mobile ? "4px 4px 0px #000" : "8px 8px 0px #000",
+          border: "none",
+          boxShadow: "none",
           maxWidth: 480,
           width: "100%",
           overflow: "hidden",
@@ -37,15 +37,15 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
       >
         <div
           style={{
-            backgroundColor: "#F8EDAD",
+            backgroundColor: "#F0EAD2",
             padding: mobile ? "16px 20px" : "24px 32px",
-            borderBottom: "2px solid #000",
+            borderBottom: "none",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
           }}
         >
-          <span style={{ color: "#000", fontWeight: 900, fontSize: 16, letterSpacing: "0.5px" }}>
+          <span style={{ color: "#003F5C", fontWeight: 900, fontSize: 16, letterSpacing: "0.5px" }}>
             ЗАЯВКА ОТПРАВЛЕНА
           </span>
           <button
@@ -53,9 +53,9 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
             style={{
               width: 32,
               height: 32,
-              border: "2px solid #000",
+              border: "none",
               backgroundColor: "transparent",
-              color: "#000",
+              color: "#003F5C",
               fontWeight: 900,
               fontSize: 16,
               cursor: "pointer",
@@ -76,8 +76,8 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
               style={{
                 width: 80,
                 height: 80,
-                backgroundColor: "#ED7C30",
-                border: "2px solid #000",
+                backgroundColor: "#879E82",
+                border: "none",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -91,7 +91,7 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
               style={{
                 fontSize: 28,
                 fontWeight: 900,
-                color: "#000",
+                color: "#003F5C",
                 margin: "0 0 12px",
                 lineHeight: 1,
               }}
@@ -105,8 +105,8 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
 
           <div
             style={{
-              backgroundColor: "#ED7C30",
-              border: "2px solid #000",
+              backgroundColor: "#879E82",
+              border: "none",
               padding: "16px 20px",
               marginBottom: 24,
               display: "flex",
@@ -118,7 +118,7 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
               style={{
                 width: 10,
                 height: 10,
-                backgroundColor: "#000",
+                backgroundColor: "#003F5C",
                 borderRadius: "50%",
               }}
             />
@@ -135,10 +135,10 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
                 padding: "16px",
                 fontSize: 15,
                 fontWeight: 900,
-                color: "#000",
-                backgroundColor: "#ED7C30",
-                border: "2px solid #000",
-                boxShadow: "4px 4px 0px #000",
+                color: "#003F5C",
+                backgroundColor: "#879E82",
+                border: "none",
+                boxShadow: "none",
                 cursor: "pointer",
                 letterSpacing: "0.5px",
                 fontFamily: "'Inter', sans-serif",
@@ -153,9 +153,9 @@ export function SuccessModal({ onClose, onCabinet, applicationId }: SuccessModal
                 padding: "16px",
                 fontSize: 15,
                 fontWeight: 900,
-                color: "#000",
+                color: "#003F5C",
                 backgroundColor: "#fff",
-                border: "2px solid #000",
+                border: "none",
                 cursor: "pointer",
                 letterSpacing: "0.5px",
                 fontFamily: "'Inter', sans-serif",

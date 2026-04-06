@@ -1,3 +1,17 @@
-This Figma Make file includes components from [shadcn/ui](https://ui.shadcn.com/) used under [MIT license](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md).
+# Благодарности и лицензии сторонних материалов
 
-This Figma Make file includes photos from [Unsplash](https://unsplash.com) used under [license](https://unsplash.com/license).
+## UI и компоненты
+
+- Проект использует идеи и компоненты, согласованные со стеком **shadcn/ui** ([MIT License](https://github.com/shadcn-ui/ui/blob/main/LICENSE.md)).
+
+## Изображения
+
+- Использованы материалы с [Unsplash](https://unsplash.com) на условиях [лицензии Unsplash](https://unsplash.com/license).
+
+## Библиотеки (npm)
+
+- **React**, **Vite** — см. лицензии в `node_modules` и на сайтах проектов.
+- **SheetJS (`xlsx`)** — экспорт Excel в панели администратора ([Apache-2.0](https://www.npmjs.com/package/xlsx), см. пакет).
+- Прочие зависимости перечислены в `package.json`; лицензии уточняйте в соответствующих пакетах.
+
+При добавлении новых зависимостей или медиа имеет смысл дополнять этот файл.

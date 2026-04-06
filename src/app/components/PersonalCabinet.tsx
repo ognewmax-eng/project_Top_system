@@ -12,14 +12,14 @@ interface PersonalCabinetProps {
 const statusConfig: Record<string, { label: string; color: string; textColor: string; desc: string }> = {
   review: {
     label: "НА ПРОВЕРКЕ",
-    color: "#ED7C30",
-    textColor: "#000",
+    color: "#879E82",
+    textColor: "#003F5C",
     desc: "Ваша заявка получена и находится на рассмотрении. Ожидайте ответа в течение 3 рабочих дней.",
   },
   revision: {
     label: "НА ДОРАБОТКЕ",
     color: "#F59E0B",
-    textColor: "#000",
+    textColor: "#003F5C",
     desc: "Администратор вернул заявку на доработку. Внесите правки и отправьте заявку снова.",
   },
   approved: {
@@ -47,6 +47,10 @@ const benefitLabels: Record<string, string> = {
   svo: "ДЕТИ УЧАСТНИКОВ СВО",
   orphan: "ДЕТИ-СИРОТЫ",
   disabled: "ДЕТИ-ИНВАЛИДЫ",
+  ovz: "ДЕТИ ОВЗ",
+  combat_veteran: "ВЕТЕРАНЫ БД",
+  kmns: "КМНС",
+  preventive: "ПРОФИЛАКТИЧЕСКИЙ УЧЁТ",
   large_family: "МНОГОДЕТНЫЕ СЕМЬИ",
   none: "БЕЗ ЛЬГОТ",
 };
@@ -128,20 +132,20 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
 
   return (
     <div style={{ backgroundColor: "#fff", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
-      <div style={{ backgroundColor: "#F8EDAD", borderBottom: "2px solid #000", padding: mobile ? "20px 16px" : "32px 24px" }}>
+      <div style={{ backgroundColor: "#F0EAD2", borderBottom: "none", padding: mobile ? "20px 16px" : "32px 24px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
           <button
             onClick={onBack}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", border: "2px solid #000", backgroundColor: "transparent", color: "#000", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", marginBottom: mobile ? 16 : 24, fontFamily: "'Inter', sans-serif" }}
+            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", border: "none", backgroundColor: "transparent", color: "#003F5C", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", marginBottom: mobile ? 16 : 24, fontFamily: "'Inter', sans-serif" }}
           >
             ← НАЗАД НА ГЛАВНУЮ
           </button>
           <div style={{ display: "flex", alignItems: mobile ? "flex-start" : "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, flexDirection: mobile ? "column" : "row" }}>
             <div>
-              <div style={{ color: "rgba(0,0,0,0.5)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>ЛИЧНЫЙ КАБИНЕТ</div>
-              <h1 style={{ fontSize: mobile ? 24 : 36, fontWeight: 900, color: "#000", margin: 0, lineHeight: 1 }}>{name}</h1>
+              <div style={{ color: "rgba(0,63,92,0.5)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>ЛИЧНЫЙ КАБИНЕТ</div>
+              <h1 style={{ fontSize: mobile ? 24 : 36, fontWeight: 900, color: "#003F5C", margin: 0, lineHeight: 1 }}>{name}</h1>
             </div>
-            <div style={{ backgroundColor: status.color, border: "2px solid #000", boxShadow: "4px 4px 0px #000", padding: mobile ? "8px 16px" : "12px 24px", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ backgroundColor: status.color, border: "none", boxShadow: "none", padding: mobile ? "8px 16px" : "12px 24px", display: "flex", alignItems: "center", gap: 12 }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: status.textColor }} />
               <span style={{ fontWeight: 900, fontSize: mobile ? 14 : 18, color: status.textColor, letterSpacing: "1px" }}>{status.label}</span>
             </div>
@@ -158,8 +162,8 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               </div>
             )}
 
-            <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div style={{ backgroundColor: status.color, padding: "16px 24px", borderBottom: "2px solid #000", display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ border: "none", boxShadow: "none" }}>
+              <div style={{ backgroundColor: status.color, padding: "16px 24px", borderBottom: "none", display: "flex", alignItems: "center", gap: 12 }}>
                 <span style={{ fontWeight: 900, fontSize: 16, color: status.textColor }}>СТАТУС ЗАЯВКИ: {status.label}</span>
               </div>
               <div style={{ padding: "20px 24px" }}>
@@ -167,30 +171,30 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                 {currentStatus === "revision" && application?.revisionComment && (
                   <div style={{ marginTop: 16, padding: "12px 16px", backgroundColor: "#FEF3C7", border: "2px solid #F59E0B" }}>
                     <div style={{ fontSize: 11, fontWeight: 900, color: "#92400E", letterSpacing: "0.5px", marginBottom: 6 }}>КОММЕНТАРИЙ АДМИНИСТРАТОРА</div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#000", whiteSpace: "pre-wrap" }}>{application.revisionComment}</div>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "#003F5C", whiteSpace: "pre-wrap" }}>{application.revisionComment}</div>
                   </div>
                 )}
               </div>
             </div>
 
-            <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div style={{ backgroundColor: "#000", padding: "16px 24px", borderBottom: "2px solid #000" }}>
+            <div style={{ border: "none", boxShadow: "none" }}>
+              <div style={{ backgroundColor: "#003F5C", padding: "16px 24px", borderBottom: "none" }}>
                 <span style={{ fontWeight: 900, fontSize: 16, color: "#fff" }}>ИСТОРИЯ ЗАЯВКИ</span>
               </div>
               <div style={{ padding: "24px" }}>
                 {timelineSteps.map((step, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 16, marginBottom: i < timelineSteps.length - 1 ? 20 : 0 }}>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                      <div style={{ width: 24, height: 24, border: "2px solid #000", backgroundColor: step.active ? "#ED7C30" : step.done ? "#000" : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: 24, height: 24, border: "none", backgroundColor: step.active ? "#879E82" : step.done ? "#003F5C" : "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                         {step.done && !step.active && (
                           <svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="#fff" strokeWidth="2.5" strokeLinecap="square" /></svg>
                         )}
-                        {step.active && <div style={{ width: 8, height: 8, backgroundColor: "#000" }} />}
+                        {step.active && <div style={{ width: 8, height: 8, backgroundColor: "#003F5C" }} />}
                       </div>
-                      {i < timelineSteps.length - 1 && <div style={{ width: 2, height: 28, backgroundColor: step.done ? "#000" : "#ddd", marginTop: 2 }} />}
+                      {i < timelineSteps.length - 1 && <div style={{ width: 2, height: 28, backgroundColor: step.done ? "#003F5C" : "#ddd", marginTop: 2 }} />}
                     </div>
                     <div>
-                      <div style={{ fontWeight: step.active || step.done ? 900 : 400, fontSize: 15, color: step.done || step.active ? "#000" : "#999" }}>{step.label}</div>
+                      <div style={{ fontWeight: step.active || step.done ? 900 : 400, fontSize: 15, color: step.done || step.active ? "#003F5C" : "#999" }}>{step.label}</div>
                       <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>{step.date}</div>
                     </div>
                   </div>
@@ -198,9 +202,9 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               </div>
             </div>
 
-            <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div style={{ backgroundColor: "#f5f5f5", padding: "16px 24px", borderBottom: "2px solid #000" }}>
-                <span style={{ fontWeight: 900, fontSize: 16, color: "#000" }}>ДАННЫЕ ЗАЯВКИ</span>
+            <div style={{ border: "none", boxShadow: "none" }}>
+              <div style={{ backgroundColor: "#eeeadf", padding: "16px 24px", borderBottom: "none" }}>
+                <span style={{ fontWeight: 900, fontSize: 16, color: "#003F5C" }}>ДАННЫЕ ЗАЯВКИ</span>
               </div>
               <div style={{ padding: "24px" }}>
                 <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: 16 }}>
@@ -214,7 +218,7 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                   ].map((field) => (
                     <div key={field.label}>
                       <div style={{ fontSize: 11, fontWeight: 900, color: "#666", letterSpacing: "0.5px", marginBottom: 4 }}>{field.label}</div>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: "#000" }}>{field.value}</div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#003F5C" }}>{field.value}</div>
                     </div>
                   ))}
                 </div>
@@ -222,9 +226,9 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
             </div>
 
             {currentStatus === "revision" && application && (
-              <div style={{ border: "2px solid #F59E0B", boxShadow: "4px 4px 0px #000" }}>
-                <div style={{ backgroundColor: "#F59E0B", padding: "16px 24px", borderBottom: "2px solid #000" }}>
-                  <span style={{ fontWeight: 900, fontSize: 16, color: "#000" }}>ДОРАБОТАТЬ ЗАЯВКУ</span>
+              <div style={{ border: "2px solid #F59E0B", boxShadow: "none" }}>
+                <div style={{ backgroundColor: "#F59E0B", padding: "16px 24px", borderBottom: "none" }}>
+                  <span style={{ fontWeight: 900, fontSize: 16, color: "#003F5C" }}>ДОРАБОТАТЬ ЗАЯВКУ</span>
                 </div>
                 <div style={{ padding: "24px" }}>
                   <p style={{ fontSize: 13, color: "#555", marginBottom: 20 }}>
@@ -249,7 +253,7 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                           <select
                             value={editForm[f.key] || ""}
                             onChange={(e) => setEditForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
-                            style={{ width: "100%", padding: "10px 12px", border: "2px solid #000", fontSize: 14, fontFamily: "'Inter', sans-serif" }}
+                            style={{ width: "100%", padding: "10px 12px", border: "none", borderBottom: "1.5px solid rgba(135,158,130,0.4)", fontSize: 14, fontFamily: "'Inter', sans-serif" }}
                           >
                             <option value="">{f.key === "shift" ? "Выберите смену" : "Выберите класс"}</option>
                             {Array.isArray(f.options) && (f.options as { v: string; l: string }[])[0]?.v
@@ -262,7 +266,7 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                             value={editForm[f.key] || ""}
                             onChange={(e) => setEditForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
                             placeholder={(f as { placeholder?: string }).placeholder}
-                            style={{ width: "100%", padding: "10px 12px", border: "2px solid #000", fontSize: 14, fontFamily: "'Inter', sans-serif", boxSizing: "border-box" }}
+                            style={{ width: "100%", padding: "10px 12px", border: "none", borderBottom: "1.5px solid rgba(135,158,130,0.4)", fontSize: 14, fontFamily: "'Inter', sans-serif", boxSizing: "border-box" }}
                           />
                         )}
                       </div>
@@ -272,7 +276,7 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                     <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#666", marginBottom: 8 }}>ДОБАВИТЬ ФАЙЛЫ (при необходимости)</label>
                     <div
                       onClick={() => revisionFileInputRef.current?.click()}
-                      style={{ border: "2px dashed #000", padding: "20px", textAlign: "center", cursor: "pointer", backgroundColor: "#fafafa", fontSize: 13, fontWeight: 700 }}
+                      style={{ border: "1px dashed rgba(0,63,92,0.25)", padding: "20px", textAlign: "center", cursor: "pointer", backgroundColor: "#faf8f3", fontSize: 13, fontWeight: 700 }}
                     >
                       {revisionFiles.length > 0 ? `Выбрано файлов: ${revisionFiles.length}` : "Нажмите или перетащите файлы сюда"}
                     </div>
@@ -341,9 +345,9 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                     }}
                     disabled={revisionSubmitting}
                     style={{
-                      width: "100%", padding: "14px", fontSize: 16, fontWeight: 900, color: "#000",
-                      backgroundColor: revisionSubmitting ? "#ccc" : "#F59E0B", border: "2px solid #000",
-                      boxShadow: "4px 4px 0px #000", cursor: revisionSubmitting ? "not-allowed" : "pointer",
+                      width: "100%", padding: "14px", fontSize: 16, fontWeight: 900, color: "#003F5C",
+                      backgroundColor: revisionSubmitting ? "#ccc" : "#F59E0B", border: "none",
+                      boxShadow: "none", cursor: revisionSubmitting ? "not-allowed" : "pointer",
                       fontFamily: "'Inter', sans-serif",
                     }}
                   >
@@ -355,22 +359,22 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
           </div>
 
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-            <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000", backgroundColor: "#F8EDAD", padding: "24px", textAlign: "center" }}>
-              <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,0,0,0.5)", letterSpacing: "1px", marginBottom: 8 }}>НОМЕР ЗАЯВКИ</div>
-              <div style={{ fontSize: 32, fontWeight: 900, color: "#ED7C30", lineHeight: 1, marginBottom: 4 }}>
+            <div style={{ border: "none", boxShadow: "none", backgroundColor: "#F0EAD2", padding: "24px", textAlign: "center" }}>
+              <div style={{ fontSize: 12, fontWeight: 900, color: "rgba(0,63,92,0.5)", letterSpacing: "1px", marginBottom: 8 }}>НОМЕР ЗАЯВКИ</div>
+              <div style={{ fontSize: 32, fontWeight: 900, color: "#879E82", lineHeight: 1, marginBottom: 4 }}>
                 {application?.id ? `#${application.id.replace(/^app_/, "")}` : "—"}
               </div>
-              <div style={{ fontSize: 12, color: "rgba(0,0,0,0.5)" }}>
+              <div style={{ fontSize: 12, color: "rgba(0,63,92,0.5)" }}>
                 {application?.createdAt ? `от ${formatCreatedAt(application.createdAt)}` : "—"}
               </div>
             </div>
 
-            <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div style={{ backgroundColor: "#ED7C30", padding: "16px 24px", borderBottom: "2px solid #000" }}>
-                <span style={{ fontWeight: 900, fontSize: 14, color: "#000" }}>КАТЕГОРИЯ ЛЬГОТ</span>
+            <div style={{ border: "none", boxShadow: "none" }}>
+              <div style={{ backgroundColor: "#879E82", padding: "16px 24px", borderBottom: "none" }}>
+                <span style={{ fontWeight: 900, fontSize: 14, color: "#003F5C" }}>КАТЕГОРИЯ ЛЬГОТ</span>
               </div>
               <div style={{ padding: "16px 24px" }}>
-                <div style={{ border: "2px solid #000", padding: "12px 16px", backgroundColor: "#fff", fontWeight: 900, fontSize: 13 }}>
+                <div style={{ border: "none", padding: "12px 16px", backgroundColor: "#fff", fontWeight: 900, fontSize: 13 }}>
                   {application?.benefits?.length
                     ? application.benefits.map((id) => benefitLabels[id] || id).join(", ")
                     : (userData?.benefits ? (() => {
@@ -383,9 +387,9 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               </div>
             </div>
 
-            <div style={{ border: "2px solid #000", boxShadow: "4px 4px 0px #000" }}>
-              <div style={{ backgroundColor: "#f5f5f5", padding: "16px 24px", borderBottom: "2px solid #000" }}>
-                <span style={{ fontWeight: 900, fontSize: 14, color: "#000" }}>ЗАГРУЖЕННЫЕ ДОКУМЕНТЫ</span>
+            <div style={{ border: "none", boxShadow: "none" }}>
+              <div style={{ backgroundColor: "#eeeadf", padding: "16px 24px", borderBottom: "none" }}>
+                <span style={{ fontWeight: 900, fontSize: 14, color: "#003F5C" }}>ЗАГРУЖЕННЫЕ ДОКУМЕНТЫ</span>
               </div>
               <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
                 {(() => {
@@ -403,8 +407,8 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                     const href = getFileUrl(path);
                     return (
                       <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "2px solid #000", fontSize: 12, fontWeight: 700, color: "#000", textDecoration: "none", backgroundColor: "#fff", transition: "background 0.15s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F8EDAD"; }}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "none", fontSize: 12, fontWeight: 700, color: "#003F5C", textDecoration: "none", backgroundColor: "#fff", transition: "background 0.15s" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F0EAD2"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fff"; }}
                       >
                         <span>📄</span>
@@ -417,14 +421,14 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               </div>
             </div>
 
-            <div style={{ border: "2px solid #000", padding: "20px", backgroundColor: "#f5f5f5" }}>
+            <div style={{ border: "none", padding: "20px", backgroundColor: "#eeeadf" }}>
               <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>НУЖНА ПОМОЩЬ?</div>
               <p style={{ fontSize: 13, color: "#555", lineHeight: 1.5, marginBottom: 16 }}>Свяжитесь с куратором программы по телефону или email.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <a href="tel:83493837523" style={{ display: "block", padding: "10px 16px", border: "2px solid #000", backgroundColor: "#fff", fontWeight: 900, fontSize: 13, color: "#000", textDecoration: "none", textAlign: "center", boxShadow: "2px 2px 0px #000" }}>
+                <a href="tel:83493837523" style={{ display: "block", padding: "10px 16px", border: "none", backgroundColor: "#fff", fontWeight: 900, fontSize: 13, color: "#003F5C", textDecoration: "none", textAlign: "center", boxShadow: "none" }}>
                   8 (3493) 83-75-23
                 </a>
-                <a href="mailto:help@trudovoelete.ru" style={{ display: "block", padding: "10px 16px", border: "2px solid #000", backgroundColor: "#F8EDAD", fontWeight: 900, fontSize: 12, color: "#000", textDecoration: "none", textAlign: "center", letterSpacing: "0.3px" }}>
+                <a href="mailto:help@trudovoelete.ru" style={{ display: "block", padding: "10px 16px", border: "none", backgroundColor: "#F0EAD2", fontWeight: 900, fontSize: 12, color: "#003F5C", textDecoration: "none", textAlign: "center", letterSpacing: "0.3px" }}>
                   НАПИСАТЬ КУРАТОРУ
                 </a>
               </div>

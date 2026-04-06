@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 export function HowItWorks() {
@@ -9,7 +9,7 @@ export function HowItWorks() {
       num: "01",
       title: "ЗАРЕГИСТРИРУЙСЯ",
       desc: "Заполни анкету на сайте: укажи данные, выбери льготы, загрузи документы.",
-      color: "#ED7C30",
+      color: "#879E82",
     },
     {
       num: "02",
@@ -21,14 +21,14 @@ export function HowItWorks() {
       num: "03",
       title: "ПОЛУЧИ НАПРАВЛЕНИЕ",
       desc: "При одобрении — получи направление к работодателю и подпиши договор.",
-      color: "#F8EDAD",
-      textColor: "#000",
+      color: "#F0EAD2",
+      textColor: "#003F5C",
     },
     {
       num: "04",
       title: "НАЧНИ РАБОТАТЬ",
       desc: "Приступи к работе и получай официальную заработную плату каждые 2 недели.",
-      color: "#ED7C30",
+      color: "#879E82",
     },
   ];
 
@@ -36,8 +36,8 @@ export function HowItWorks() {
     <section
       id="how"
       style={{
-        backgroundColor: "#f5f5f5",
-        borderBottom: "2px solid #000",
+        backgroundColor: "#eeeadf",
+        borderBottom: "none",
         fontFamily: "'Inter', sans-serif",
       }}
     >
@@ -46,7 +46,7 @@ export function HowItWorks() {
           <span
             style={{
               display: "inline-block",
-              backgroundColor: "#000",
+              backgroundColor: "#003F5C",
               color: "#fff",
               padding: "4px 12px",
               fontSize: 13,
@@ -61,7 +61,7 @@ export function HowItWorks() {
             style={{
               fontSize: mobile ? "clamp(28px, 8vw, 40px)" : "clamp(36px, 5vw, 60px)",
               fontWeight: 900,
-              color: "#000",
+              color: "#003F5C",
               lineHeight: 1,
               letterSpacing: "-1px",
               margin: 0,
@@ -76,7 +76,7 @@ export function HowItWorks() {
             display: "grid",
             gridTemplateColumns: mobile ? "1fr" : "repeat(4, 1fr)",
             gap: 0,
-            border: "2px solid #000",
+            border: "none",
           }}
         >
           {steps.map((step, i) => (
@@ -84,8 +84,8 @@ export function HowItWorks() {
               key={i}
               style={{
                 backgroundColor: step.color,
-                borderRight: !mobile && i < steps.length - 1 ? "2px solid #000" : "none",
-                borderBottom: mobile && i < steps.length - 1 ? "2px solid #000" : "none",
+                borderRight: !mobile && i < steps.length - 1 ? "none" : "none",
+                borderBottom: mobile && i < steps.length - 1 ? "none" : "none",
                 padding: mobile ? "24px 20px" : "32px 24px",
                 display: "flex",
                 flexDirection: mobile ? "row" : "column",
@@ -97,7 +97,7 @@ export function HowItWorks() {
                 style={{
                   fontSize: mobile ? 36 : 48,
                   fontWeight: 900,
-                  color: step.textColor || "#000",
+                  color: step.textColor || "#003F5C",
                   lineHeight: 1,
                   opacity: 0.3,
                   flexShrink: 0,
@@ -110,7 +110,7 @@ export function HowItWorks() {
                   style={{
                     fontSize: mobile ? 15 : 18,
                     fontWeight: 900,
-                    color: step.textColor || "#000",
+                    color: step.textColor || "#003F5C",
                     lineHeight: 1.1,
                     marginBottom: 8,
                   }}
@@ -120,7 +120,7 @@ export function HowItWorks() {
                 <div
                   style={{
                     fontSize: mobile ? 13 : 14,
-                    color: step.textColor || "#000",
+                    color: step.textColor || "#003F5C",
                     lineHeight: 1.5,
                     opacity: 0.85,
                   }}

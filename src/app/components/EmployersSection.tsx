@@ -9,24 +9,24 @@ const SHIFTS = [
     label: "1 СМЕНА",
     dates: "1 июня — 30 июня",
     totalSpots: 120,
-    color: "#F8EDAD",
-    accent: "#ED7C30",
+    color: "#F0EAD2",
+    accent: "#879E82",
   },
   {
     id: 2,
     label: "2 СМЕНА",
     dates: "1 июля — 31 июля",
     totalSpots: 98,
-    color: "#ED7C30",
-    accent: "#000",
+    color: "#879E82",
+    accent: "#003F5C",
   },
   {
     id: 3,
     label: "3 СМЕНА",
     dates: "1 августа — 31 августа",
     totalSpots: 150,
-    color: "#000",
-    accent: "#F8EDAD",
+    color: "#003F5C",
+    accent: "#F0EAD2",
   },
 ];
 
@@ -59,7 +59,7 @@ export function EmployersSection() {
       id="employers"
       style={{
         backgroundColor: "#fff",
-        borderBottom: "2px solid #000",
+        borderBottom: "none",
         fontFamily: "'Inter', sans-serif",
       }}
     >
@@ -81,9 +81,9 @@ export function EmployersSection() {
             <span
               style={{
                 display: "inline-block",
-                backgroundColor: "#ED7C30",
-                border: "2px solid #000",
-                color: "#000",
+                backgroundColor: "#879E82",
+                border: "none",
+                color: "#003F5C",
                 padding: "4px 12px",
                 fontSize: 13,
                 fontWeight: 900,
@@ -97,7 +97,7 @@ export function EmployersSection() {
               style={{
                 fontSize: mobile ? "clamp(28px, 8vw, 40px)" : "clamp(36px, 5vw, 60px)",
                 fontWeight: 900,
-                color: "#000",
+                color: "#003F5C",
                 lineHeight: 1,
                 letterSpacing: "-1px",
                 margin: 0,
@@ -109,18 +109,18 @@ export function EmployersSection() {
 
           <div
             style={{
-              border: "2px solid #000",
-              boxShadow: mobile ? "3px 3px 0px #000" : "5px 5px 0px #000",
+              border: "none",
+              boxShadow: "none",
               padding: mobile ? "14px 20px" : "20px 32px",
-              backgroundColor: "#F8EDAD",
+              backgroundColor: "#F0EAD2",
               textAlign: "center",
               width: mobile ? "100%" : undefined,
             }}
           >
-            <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: "1px", color: "rgba(0,0,0,0.5)", marginBottom: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 900, letterSpacing: "1px", color: "rgba(0,63,92,0.5)", marginBottom: 4 }}>
               ВСЕГО СВОБОДНО
             </div>
-            <div style={{ fontSize: mobile ? 40 : 52, fontWeight: 900, lineHeight: 1, color: "#000" }}>
+            <div style={{ fontSize: mobile ? 40 : 52, fontWeight: 900, lineHeight: 1, color: "#003F5C" }}>
               {totalFree}
             </div>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#555", marginTop: 4 }}>
@@ -134,8 +134,8 @@ export function EmployersSection() {
           style={{
             display: "grid",
             gridTemplateColumns: mobile ? "1fr" : "repeat(3, 1fr)",
-            border: "2px solid #000",
-            boxShadow: mobile ? "4px 4px 0px #000" : "6px 6px 0px #000",
+            border: "none",
+            boxShadow: "none",
           }}
         >
           {SHIFTS.map((shift, i) => {
@@ -150,8 +150,8 @@ export function EmployersSection() {
                 key={shift.id}
                 style={{
                   backgroundColor: shift.color,
-                  borderRight: !mobile && !isLast ? "2px solid #000" : "none",
-                  borderBottom: mobile && !isLast ? "2px solid #000" : "none",
+                  borderRight: !mobile && !isLast ? "none" : "none",
+                  borderBottom: mobile && !isLast ? "none" : "none",
                   padding: mobile ? "28px 20px" : "36px 28px",
                   display: "flex",
                   flexDirection: "column",
@@ -161,11 +161,11 @@ export function EmployersSection() {
                 <div
                   style={{
                     display: "inline-block",
-                    border: `2px solid ${shift.id === 3 ? "#fff" : "#000"}`,
+                    border: "none",
                     padding: "4px 12px",
                     fontSize: 12,
                     fontWeight: 900,
-                    color: shift.id === 3 ? "#fff" : "#000",
+                    color: shift.id === 3 ? "#fff" : "#003F5C",
                     letterSpacing: "1px",
                     alignSelf: "flex-start",
                     marginBottom: 20,
@@ -178,7 +178,7 @@ export function EmployersSection() {
                   style={{
                     fontSize: mobile ? 52 : 72,
                     fontWeight: 900,
-                    color: shift.id === 3 ? "#F8EDAD" : "#000",
+                    color: shift.id === 3 ? "#F0EAD2" : "#003F5C",
                     lineHeight: 1,
                     letterSpacing: "-2px",
                     marginBottom: 4,
@@ -190,7 +190,7 @@ export function EmployersSection() {
                   style={{
                     fontSize: 14,
                     fontWeight: 900,
-                    color: shift.id === 3 ? "rgba(255,255,255,0.7)" : "rgba(0,0,0,0.5)",
+                    color: shift.id === 3 ? "rgba(255,255,255,0.7)" : "rgba(0,63,92,0.5)",
                     letterSpacing: "0.5px",
                     marginBottom: 8,
                   }}
@@ -201,7 +201,7 @@ export function EmployersSection() {
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: shift.id === 3 ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+                    color: shift.id === 3 ? "rgba(255,255,255,0.6)" : "rgba(0,63,92,0.5)",
                     marginBottom: 24,
                   }}
                 >
@@ -212,7 +212,7 @@ export function EmployersSection() {
                   <div
                     style={{
                       height: 8,
-                      border: `2px solid ${shift.id === 3 ? "#fff" : "#000"}`,
+                      border: "none",
                       backgroundColor: "transparent",
                       marginBottom: 6,
                     }}
@@ -221,7 +221,7 @@ export function EmployersSection() {
                       style={{
                         height: "100%",
                         width: `${occupiedPercent}%`,
-                        backgroundColor: shift.id === 3 ? "#ED7C30" : "#000",
+                        backgroundColor: shift.id === 3 ? "#879E82" : "#003F5C",
                         transition: "width 0.3s",
                       }}
                     />
@@ -232,7 +232,7 @@ export function EmployersSection() {
                       justifyContent: "space-between",
                       fontSize: 11,
                       fontWeight: 700,
-                      color: shift.id === 3 ? "rgba(255,255,255,0.6)" : "rgba(0,0,0,0.5)",
+                      color: shift.id === 3 ? "rgba(255,255,255,0.6)" : "rgba(0,63,92,0.5)",
                     }}
                   >
                     <span>ЗАНЯТО {occupiedPercent}%</span>
@@ -242,7 +242,7 @@ export function EmployersSection() {
 
                 <div
                   style={{
-                    borderTop: `2px solid ${shift.id === 3 ? "rgba(255,255,255,0.2)" : "rgba(0,0,0,0.15)"}`,
+                    borderTop: `2px solid ${shift.id === 3 ? "rgba(255,255,255,0.2)" : "rgba(0,63,92,0.15)"}`,
                     paddingTop: 16,
                     marginTop: "auto",
                     display: "flex",
@@ -255,7 +255,7 @@ export function EmployersSection() {
                     style={{
                       fontSize: 13,
                       fontWeight: 700,
-                      color: shift.id === 3 ? "rgba(255,255,255,0.8)" : "rgba(0,0,0,0.6)",
+                      color: shift.id === 3 ? "rgba(255,255,255,0.8)" : "rgba(0,63,92,0.6)",
                     }}
                   >
                     {shift.dates}
@@ -276,8 +276,8 @@ export function EmployersSection() {
             flexWrap: "wrap",
             gap: 12,
             padding: "12px 16px",
-            border: "2px solid #000",
-            backgroundColor: "#f5f5f5",
+            border: "none",
+            backgroundColor: "#eeeadf",
             flexDirection: mobile ? "column" : "row",
           }}
         >
@@ -285,7 +285,7 @@ export function EmployersSection() {
             <span style={{ fontSize: 14 }}>ℹ️</span>
             Количество свободных мест обновляется по мере одобрения заявок. Успей записаться!
           </span>
-          <span style={{ fontSize: 13, fontWeight: 900, color: "#000", letterSpacing: "0.5px" }}>
+          <span style={{ fontSize: 13, fontWeight: 900, color: "#003F5C", letterSpacing: "0.5px" }}>
             Подано заявок: {totalApplications}
           </span>
         </div>
