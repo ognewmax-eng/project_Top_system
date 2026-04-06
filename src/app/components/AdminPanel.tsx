@@ -362,11 +362,15 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
             <select value={filterBenefit} onChange={(e) => setFilterBenefit(e.target.value)}
               style={{ ...inputStyle, padding: "8px 12px", fontSize: 13, cursor: "pointer" }}>
               <option value="all">Все категории</option>
-              <option value="has_benefit">С льготами</option>
+              <option value="has_benefit">С льготами (любые)</option>
               <option value="low_income">Малоимущие</option>
               <option value="svo">Дети участников СВО</option>
               <option value="orphan">Дети-сироты</option>
               <option value="disabled">Дети-инвалиды</option>
+              <option value="ovz">Дети ОВЗ</option>
+              <option value="combat_veteran">Ветераны БД</option>
+              <option value="kmns">КМНС</option>
+              <option value="preventive">Профилактический учёт</option>
               <option value="large_family">Многодетные семьи</option>
               <option value="none">Без льгот</option>
             </select>

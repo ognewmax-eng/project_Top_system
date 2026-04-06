@@ -7,7 +7,7 @@ const SHIFTS = [
   {
     id: 1,
     label: "1 СМЕНА",
-    dates: "1 июня — 30 июня",
+    dates: "1 июня — 19 июня",
     totalSpots: 120,
     color: "#F0EAD2",
     accent: "#879E82",
@@ -15,7 +15,7 @@ const SHIFTS = [
   {
     id: 2,
     label: "2 СМЕНА",
-    dates: "1 июля — 31 июля",
+    dates: "6 июля — 23 июля",
     totalSpots: 98,
     color: "#879E82",
     accent: "#003F5C",
@@ -23,7 +23,7 @@ const SHIFTS = [
   {
     id: 3,
     label: "3 СМЕНА",
-    dates: "1 августа — 31 августа",
+    dates: "3 августа — 22 августа",
     totalSpots: 150,
     color: "#003F5C",
     accent: "#F0EAD2",

@@ -20,9 +20,9 @@ const benefitCards = [
 ];
 
 const shiftOptions = [
-  { id: "1", label: "1 СМЕНА", dates: "1 июня — 30 июня" },
-  { id: "2", label: "2 СМЕНА", dates: "1 июля — 31 июля" },
-  { id: "3", label: "3 СМЕНА", dates: "1 августа — 31 августа" },
+  { id: "1", label: "1 СМЕНА", dates: "1 июня — 19 июня" },
+  { id: "2", label: "2 СМЕНА", dates: "6 июля — 23 июля" },
+  { id: "3", label: "3 СМЕНА", dates: "3 августа — 22 августа" },
 ];
 
 const schoolOptions = [
@@ -94,6 +94,11 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     password: "",
     confirmPassword: "",
     shift: "",
+    parentFullName: "",
+    parentBirthDate: "",
+    parentPhone: "",
+    parentAddress: "",
+    parentWorkplace: "",
   });
   const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
   const [documents, setDocuments] = useState<Record<DocKey, File | null>>(() => {
@@ -113,6 +118,10 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, phone: formatPhone(e.target.value) }));
+  };
+
+  const handleParentPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setForm((prev) => ({ ...prev, parentPhone: formatPhone(e.target.value) }));
   };
 
   const toggleBenefit = (id: string) => {
@@ -290,8 +299,37 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
             </div>
           </div>
 
-          {/* ═══════ SECTION 3: Benefits ═══════ */}
+          {/* ═══════ SECTION 3: Parent Data ═══════ */}
           <div style={sectionHeaderStyle("#F0EAD2")}>
+            <span style={sectionHeaderText("#003F5C")}>ЛИЧНЫЕ ДАННЫЕ РОДИТЕЛЯ</span>
+          </div>
+          <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr" : "1fr 1fr", gap: mobile ? 16 : 20 }}>
+              <div style={{ ...fieldStyle, gridColumn: mobile ? undefined : "1 / -1" }}>
+                <label style={labelStyle}>ФИО *</label>
+                <input type="text" name="parentFullName" value={form.parentFullName} onChange={handleChange} placeholder="Иванова Мария Ивановна" style={inputStyle} />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>ДАТА РОЖДЕНИЯ *</label>
+                <input type="date" name="parentBirthDate" value={form.parentBirthDate} onChange={handleChange} style={inputStyle} />
+              </div>
+              <div style={fieldStyle}>
+                <label style={labelStyle}>ТЕЛЕФОН *</label>
+                <input type="tel" name="parentPhone" value={form.parentPhone} onChange={handleParentPhoneChange} placeholder="+7(XXX)XXX-XX-XX" style={inputStyle} />
+              </div>
+              <div style={{ ...fieldStyle, gridColumn: mobile ? undefined : "1 / -1" }}>
+                <label style={labelStyle}>АДРЕС РЕГИСТРАЦИИ *</label>
+                <input type="text" name="parentAddress" value={form.parentAddress} onChange={handleChange} placeholder="г. Муравленко, ул. Пример, д. 1, кв. 1" style={inputStyle} />
+              </div>
+              <div style={{ ...fieldStyle, gridColumn: mobile ? undefined : "1 / -1" }}>
+                <label style={labelStyle}>МЕСТО РАБОТЫ *</label>
+                <input type="text" name="parentWorkplace" value={form.parentWorkplace} onChange={handleChange} placeholder="ООО «Название организации»" style={inputStyle} />
+              </div>
+            </div>
+          </div>
+
+          {/* ═══════ SECTION 4: Benefits ═══════ */}
+          <div style={sectionHeaderStyle("#879E82")}>
             <span style={sectionHeaderText("#003F5C")}>ВЫБОР ЛЬГОТ</span>
           </div>
           <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
@@ -324,8 +362,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
             </div>
           </div>
 
-          {/* ═══════ SECTION 4: Shifts ═══════ */}
-          <div style={sectionHeaderStyle("#879E82")}>
+          {/* ═══════ SECTION 5: Shifts ═══════ */}
+          <div style={sectionHeaderStyle("#F0EAD2")}>
             <span style={sectionHeaderText("#003F5C")}>ВЫБОР СМЕНЫ</span>
           </div>
           <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
