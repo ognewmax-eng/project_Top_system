@@ -151,6 +151,31 @@ function isNonJsonResponse(text: string): boolean {
  * Регистрация нового пользователя + создание заявки.
  * При успехе сохраняет token и user в localStorage.
  */
+/**
+ * Предпроверка: email и ФИО+дата рождения не заняты. Без загрузки файлов.
+ * Бросает Error с текстом от сервера при конфликте (409).
+ */
+export async function checkRegistrationEligibility(data: {
+  email: string;
+  fullName: string;
+  birthDate: string;
+}): Promise<void> {
+  const url = `${API_BASE}/check_registration_eligibility.php`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  const text = await res.text();
+  if (isNonJsonResponse(text)) {
+    throw new Error('Сервер не выполняет проверку. Проверьте деплой.');
+  }
+  const json = JSON.parse(text) as { success: boolean; error?: string; eligible?: boolean };
+  if (!json.success) {
+    throw new Error(json.error || 'Регистрация с этими данными невозможна');
+  }
+}
+
 export async function registerUser(data: SaveApplicationPayload): Promise<AuthResponse> {
   const url = `${API_BASE}/register.php`;
   const res = await fetch(url, {

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from "react";
-import { registerUser, uploadFiles } from "@/api/apiService";
+import { checkRegistrationEligibility, registerUser, uploadFiles } from "@/api/apiService";
 import type { AttachmentItem } from "@/utils/attachments";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
@@ -590,6 +590,11 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                 setUploadProgress({ total: 0, completed: 0, currentFile: "" });
                 const payload = { ...form, benefits: JSON.stringify(selectedBenefits) };
                 try {
+                  await checkRegistrationEligibility({
+                    email: form.email.trim(),
+                    fullName: form.fullName.trim(),
+                    birthDate: form.birthDate,
+                  });
                   const attachmentItems: AttachmentItem[] = [];
                   const failedUploadNames: string[] = [];
                   const fullNameForUpload = form.fullName.trim() || "Участник";
