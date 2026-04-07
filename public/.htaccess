@@ -9,6 +9,10 @@
 
     # SPA: для путей без реального файла отдаём index.html
     RewriteRule ^index\.html$ - [L]
+    # Несуществующий файл в assets — 404, не HTML (иначе MIME-ошибка «ожидали JS»)
+    RewriteCond %{REQUEST_URI} /assets/
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteRule . - [R=404,L]
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule . /index.html [L]

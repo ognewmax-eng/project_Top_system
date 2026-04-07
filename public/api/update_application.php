@@ -65,9 +65,14 @@ try {
             'shift'          => 'shift',
             'benefits'       => 'benefits',
             'attachments'    => 'attachments',
+            'parentFullName'    => 'parent_full_name',
+            'parentBirthDate'   => 'parent_birth_date',
+            'parentPhone'       => 'parent_phone',
+            'parentAddress'     => 'parent_address',
+            'parentWorkplace'   => 'parent_workplace',
         ];
         foreach ($fieldMap as $jsKey => $dbCol) {
-            if (isset($data[$jsKey]) && $data[$jsKey] !== '') {
+            if (array_key_exists($jsKey, $data)) {
                 $editableFields[] = "$dbCol = :$dbCol";
                 $editParams[$dbCol] = $data[$jsKey];
             }
@@ -108,6 +113,11 @@ try {
         'email'           => trim($data['email'] ?? $user['email']),
         'shift'           => $data['shift'] ?? '',
         'benefits'        => $data['benefits'] ?? '[]',
+        'parent_full_name'    => trim($data['parentFullName'] ?? ''),
+        'parent_birth_date'   => $data['parentBirthDate'] ?? '',
+        'parent_phone'        => $data['parentPhone'] ?? '',
+        'parent_address'      => $data['parentAddress'] ?? '',
+        'parent_workplace'    => trim($data['parentWorkplace'] ?? ''),
         'attachments'     => $data['attachments'] ?? '[]',
         'status'          => 'review',
         'revision_comment' => '',
@@ -133,6 +143,11 @@ try {
         'phone'           => $fields['phone'],
         'shift'           => $fields['shift'],
         'benefits'        => $fields['benefits'],
+        'parent_full_name'    => $fields['parent_full_name'],
+        'parent_birth_date'   => $fields['parent_birth_date'],
+        'parent_phone'        => $fields['parent_phone'],
+        'parent_address'      => $fields['parent_address'],
+        'parent_workplace'    => $fields['parent_workplace'],
     ];
     $uSets = [];
     $uParams = ['uid' => $user['id']];

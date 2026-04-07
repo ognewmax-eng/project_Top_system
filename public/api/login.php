@@ -40,6 +40,11 @@ try {
     $upd = $pdo->prepare('UPDATE users SET auth_token = :token WHERE id = :id');
     $upd->execute(['token' => $token, 'id' => $user['id']]);
 
+    $attStmt = $pdo->prepare('SELECT attachments FROM applications WHERE user_id = :uid ORDER BY created_at DESC LIMIT 1');
+    $attStmt->execute(['uid' => $user['id']]);
+    $attRow = $attStmt->fetch(PDO::FETCH_ASSOC);
+    $attachmentsJson = $attRow && isset($attRow['attachments']) ? (string) $attRow['attachments'] : '[]';
+
     jsonResponse([
         'success' => true,
         'token'   => $token,
@@ -56,6 +61,12 @@ try {
             'phone'           => $user['phone'],
             'shift'           => $user['shift'],
             'benefits'        => $user['benefits'],
+            'parentFullName'    => $user['parent_full_name'] ?? '',
+            'parentBirthDate'   => $user['parent_birth_date'] ?? '',
+            'parentPhone'       => $user['parent_phone'] ?? '',
+            'parentAddress'     => $user['parent_address'] ?? '',
+            'parentWorkplace'   => $user['parent_workplace'] ?? '',
+            'attachments'       => $attachmentsJson,
         ],
     ]);
 } catch (PDOException $e) {

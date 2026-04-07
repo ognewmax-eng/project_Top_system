@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { getFileUrl, getAllApplications, updateApplicationStatus } from "@/api/apiService";
+import { getFileUrl, getAllApplications, updateApplicationStatus, adminSetUserPassword } from "@/api/apiService";
 import type { ApplicationData } from "@/api/apiService";
+import { parseAttachmentsJson } from "@/utils/attachments";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface Application {
   id: string;
   dbId: number;
+  userId: number;
   fullName: string;
   birthDate: string;
   passportSeries: string;
@@ -17,6 +19,11 @@ interface Application {
   email: string;
   shift: string;
   benefits: string[];
+  parentFullName?: string;
+  parentBirthDate?: string;
+  parentPhone?: string;
+  parentAddress?: string;
+  parentWorkplace?: string;
   status: "review" | "approved" | "rejected" | "revision" | "reserve";
   createdAt: string;
   revisionComment?: string;
@@ -59,10 +66,12 @@ function formatDate(d: string): string {
 
 function toApplication(a: ApplicationData): Application {
   return {
-    id: a.id, dbId: a.dbId, fullName: a.fullName, birthDate: a.birthDate,
+    id: a.id, dbId: a.dbId, userId: a.userId, fullName: a.fullName, birthDate: a.birthDate,
     passportSeries: a.passportSeries, passportNumber: a.passportNumber,
     address: a.address, school: a.school, grade: a.grade, phone: a.phone,
     email: a.email, shift: a.shift || "", benefits: a.benefits, status: a.status,
+    parentFullName: a.parentFullName, parentBirthDate: a.parentBirthDate,
+    parentPhone: a.parentPhone, parentAddress: a.parentAddress, parentWorkplace: a.parentWorkplace,
     createdAt: a.createdAt, revisionComment: a.revisionComment, attachments: a.attachments,
   };
 }
@@ -101,6 +110,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Record<string, string>>({});
   const [editSaving, setEditSaving] = useState(false);
+
+  const [adminUserPwNew, setAdminUserPwNew] = useState<Record<string, string>>({});
+  const [adminUserPwConfirm, setAdminUserPwConfirm] = useState<Record<string, string>>({});
+  const [adminUserPwLoading, setAdminUserPwLoading] = useState<string | null>(null);
+  const [adminUserPwFeedback, setAdminUserPwFeedback] = useState<Record<string, string>>({});
 
   const loadApps = async (pw: string) => {
     setLoading(true);
@@ -146,11 +160,49 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
     setEditSaving(true);
     try {
       await updateApplicationStatus(adminPw, app.dbId, app.status, app.revisionComment, editForm);
-      setApps((prev) => prev.map((a) => a.id === app.id ? { ...a, ...editForm, benefits: editForm.benefits ? JSON.parse(editForm.benefits) : a.benefits } : a));
+      setApps((prev) => prev.map((a) => {
+        if (a.id !== app.id) return a;
+        let benefits = a.benefits;
+        try {
+          if (editForm.benefits) benefits = JSON.parse(editForm.benefits) as string[];
+        } catch { /* keep */ }
+        return { ...a, ...editForm, benefits };
+      }));
       setEditingId(null);
       setEditForm({});
     } catch { await loadApps(adminPw); }
     finally { setEditSaving(false); }
+  };
+
+  const handleAdminSetUserPassword = async (app: Application) => {
+    const n = (adminUserPwNew[app.id] || "").trim();
+    const c = (adminUserPwConfirm[app.id] || "").trim();
+    setAdminUserPwFeedback((f) => ({ ...f, [app.id]: "" }));
+    if (n.length < 6) {
+      setAdminUserPwFeedback((f) => ({ ...f, [app.id]: "Пароль не короче 6 символов" }));
+      return;
+    }
+    if (n !== c) {
+      setAdminUserPwFeedback((f) => ({ ...f, [app.id]: "Пароли не совпадают" }));
+      return;
+    }
+    setAdminUserPwLoading(app.id);
+    try {
+      await adminSetUserPassword(adminPw, app.userId, n);
+      setAdminUserPwNew((p) => ({ ...p, [app.id]: "" }));
+      setAdminUserPwConfirm((p) => ({ ...p, [app.id]: "" }));
+      setAdminUserPwFeedback((f) => ({
+        ...f,
+        [app.id]: "Пароль установлен. Участник войдёт в кабинет с новым паролем.",
+      }));
+    } catch (e) {
+      setAdminUserPwFeedback((f) => ({
+        ...f,
+        [app.id]: e instanceof Error ? e.message : "Ошибка",
+      }));
+    } finally {
+      setAdminUserPwLoading(null);
+    }
   };
 
   const startEdit = (app: Application) => {
@@ -159,6 +211,11 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
       fullName: app.fullName, birthDate: app.birthDate, passportSeries: app.passportSeries,
       passportNumber: app.passportNumber, address: app.address, school: app.school,
       grade: app.grade, phone: app.phone, email: app.email, shift: app.shift,
+      parentFullName: app.parentFullName ?? "",
+      parentBirthDate: app.parentBirthDate ?? "",
+      parentPhone: app.parentPhone ?? "",
+      parentAddress: app.parentAddress ?? "",
+      parentWorkplace: app.parentWorkplace ?? "",
     });
   };
 
@@ -176,7 +233,9 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         a.fullName.toLowerCase().includes(q) ||
         a.email.toLowerCase().includes(q) ||
         a.phone.includes(q) ||
-        a.id.includes(q)
+        a.id.includes(q) ||
+        (a.parentFullName || "").toLowerCase().includes(q) ||
+        (a.parentPhone || "").includes(q)
       );
     }
     list.sort((a, b) => {
@@ -213,10 +272,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
         "ЛЬГОТЫ": a.benefits?.length
           ? a.benefits.map((b) => benefitLabels[b] || b).join(", ")
           : "Без льгот",
+        "ФИО РОДИТЕЛЯ": a.parentFullName || "—",
+        "ТЕЛЕФОН РОДИТЕЛЯ": a.parentPhone || "—",
+        "МЕСТО РАБОТЫ РОДИТЕЛЯ": a.parentWorkplace || "—",
       }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
-    const colWidths = [30, 16, 22, 40, 40, 12, 12, 30];
+    const colWidths = [30, 16, 22, 40, 40, 12, 12, 30, 28, 18, 36];
     ws["!cols"] = colWidths.map((w) => ({ wch: w }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, titleMap[mode]);
@@ -512,8 +574,13 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                             { key: "school",         label: "ШКОЛА",          value: app.school, wide: false },
                             { key: "grade",          label: "КЛАСС",          value: app.grade ? `${app.grade} класс` : "—", wide: false },
                             { key: "shift",          label: "СМЕНА",          value: shiftLabel, wide: false },
+                            { key: "parentFullName", label: "ФИО РОДИТЕЛЯ", value: app.parentFullName, wide: false },
+                            { key: "parentBirthDate", label: "Д.Р. РОДИТЕЛЯ", value: formatDate(app.parentBirthDate || ""), wide: false },
+                            { key: "parentPhone", label: "ТЕЛ. РОДИТЕЛЯ", value: app.parentPhone, wide: false },
+                            { key: "parentAddress", label: "АДРЕС РОДИТЕЛЯ", value: app.parentAddress, wide: true },
+                            { key: "parentWorkplace", label: "МЕСТО РАБОТЫ РОДИТЕЛЯ", value: app.parentWorkplace, wide: true },
                           ] as const).map((f) => (
-                            <div key={f.key} style={{ gridColumn: !mobile && f.wide ? "1 / -1" : undefined }}>
+                            <div key={f.key} style={{ gridColumn: !mobile && (f.wide || f.key === "parentAddress" || f.key === "parentWorkplace") ? "1 / -1" : undefined }}>
                               <div style={{ fontSize: 10, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 4 }}>{f.label}</div>
                               {isEditing ? (
                                 f.key === "grade" ? (
@@ -530,7 +597,7 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
                                     <option value="2">2 смена</option>
                                     <option value="3">3 смена</option>
                                   </select>
-                                ) : f.key === "birthDate" ? (
+                                ) : f.key === "birthDate" || f.key === "parentBirthDate" ? (
                                   <input type="date" value={editForm[f.key] || ""} onChange={(e) => setEditForm((p) => ({ ...p, [f.key]: e.target.value }))}
                                     style={{ ...inputStyle, padding: "8px 10px", fontSize: 13 }} onClick={(e) => e.stopPropagation()} />
                                 ) : (
@@ -574,22 +641,47 @@ export function AdminPanel({ onBack }: AdminPanelProps) {
 
                         {/* Files */}
                         {(() => {
-                          let paths: string[] = [];
-                          try { if (app.attachments) { const p = JSON.parse(app.attachments); if (Array.isArray(p)) paths = p.filter((x): x is string => typeof x === "string" && x.length > 0); } } catch {}
-                          return paths.length > 0 ? (
+                          const items = parseAttachmentsJson(app.attachments);
+                          return items.length > 0 ? (
                             <div style={{ marginBottom: 24, padding: "16px 20px", backgroundColor: "#fff", border: "none" }}>
-                              <div style={{ fontSize: 10, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 10 }}>ФАЙЛЫ ЗАЯВКИ ({paths.length})</div>
-                              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                                {paths.map((path, i) => (
-                                  <a key={`${app.id}-${i}`} href={getFileUrl(path)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
-                                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", border: "none", backgroundColor: "#F0EAD2", color: "#003F5C", fontSize: 12, fontWeight: 700, textDecoration: "none", fontFamily: "'Inter', sans-serif" }}>
-                                    📎 {path.split("/").pop() || `Файл ${i + 1}`}
+                              <div style={{ fontSize: 10, fontWeight: 900, color: "#888", letterSpacing: "0.5px", marginBottom: 10 }}>ФАЙЛЫ ЗАЯВКИ ({items.length})</div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                                {items.map((item, i) => (
+                                  <a key={`${app.id}-${item.path}-${i}`} href={getFileUrl(item.path)} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                                    style={{ display: "inline-flex", alignItems: "flex-start", gap: 8, padding: "8px 12px", border: "none", backgroundColor: "#F0EAD2", color: "#003F5C", fontSize: 12, fontWeight: 700, textDecoration: "none", fontFamily: "'Inter', sans-serif" }}>
+                                    <span>📎</span>
+                                    <span>
+                                      <span style={{ fontSize: 10, fontWeight: 900, color: "#666", display: "block" }}>{item.label}</span>
+                                      {item.path.split("/").pop() || item.path}
+                                    </span>
                                   </a>
                                 ))}
                               </div>
                             </div>
                           ) : null;
                         })()}
+
+                        <div style={{ marginBottom: 20, padding: "12px 16px", backgroundColor: "#eeeadf", border: "none" }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ fontSize: 10, fontWeight: 900, color: "#666", marginBottom: 8 }}>ПАРОЛЬ УЧАСТНИКА (сброс сессии)</div>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+                            <input type="password" placeholder="Новый пароль" value={adminUserPwNew[app.id] || ""}
+                              onChange={(e) => setAdminUserPwNew((p) => ({ ...p, [app.id]: e.target.value }))}
+                              style={{ ...inputStyle, maxWidth: 200, padding: "8px 10px", fontSize: 13 }} />
+                            <input type="password" placeholder="Повтор" value={adminUserPwConfirm[app.id] || ""}
+                              onChange={(e) => setAdminUserPwConfirm((p) => ({ ...p, [app.id]: e.target.value }))}
+                              style={{ ...inputStyle, maxWidth: 200, padding: "8px 10px", fontSize: 13 }} />
+                            <button type="button" disabled={adminUserPwLoading === app.id}
+                              onClick={() => handleAdminSetUserPassword(app)}
+                              style={{ ...btnStyle("#003F5C", "#fff"), opacity: adminUserPwLoading === app.id ? 0.6 : 1 }}>
+                              {adminUserPwLoading === app.id ? "…" : "УСТАНОВИТЬ ПАРОЛЬ"}
+                            </button>
+                          </div>
+                          {adminUserPwFeedback[app.id] && (
+                            <div style={{ marginTop: 8, fontSize: 12, fontWeight: 700, color: adminUserPwFeedback[app.id].includes("Ошибка") || adminUserPwFeedback[app.id].includes("короче") || adminUserPwFeedback[app.id].includes("не совпадают") ? "#DC2626" : "#166534" }}>
+                              {adminUserPwFeedback[app.id]}
+                            </div>
+                          )}
+                        </div>
 
                         {/* Action buttons */}
                         <div style={{ display: "flex", flexWrap: "wrap", gap: mobile ? 8 : 10, alignItems: "flex-start" }}>

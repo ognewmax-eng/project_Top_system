@@ -48,7 +48,7 @@ if ($fullName === '') {
     exit;
 }
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 МБ (согласовано с api/.user.ini)
 const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'];
 
 function isAllowedExtension(string $filename): bool {
@@ -169,7 +169,8 @@ for ($i = 0; $i < $count; $i++) {
         continue;
     }
 
-    $targetName = safeFilename($name);
+    // Уникальное имя: иначе одинаковые имена в разных слотах перезаписывают друг друга на Диске
+    $targetName = uniqid('f_', true) . '_' . safeFilename($name);
     $diskPath = $diskDirPath . '/' . $targetName;
     $uploadUrl = $apiBase . '/resources/upload?path=' . rawurlencode($diskPath) . '&overwrite=true';
 

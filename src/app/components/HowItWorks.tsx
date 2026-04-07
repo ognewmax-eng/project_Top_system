@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 export function HowItWorks() {
@@ -14,7 +14,7 @@ export function HowItWorks() {
     {
       num: "02",
       title: "ДОЖДИСЬ РЕШЕНИЯ",
-      desc: "Твоя заявка будет проверена в течение 3 рабочих дней. Следи за статусом в личном кабинете.",
+      desc: "Твоя заявка будет проверена в течение 10 рабочих дней. Следи за статусом в личном кабинете.",
       color: "#fff",
     },
     {

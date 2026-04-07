@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { logoutUser } from "@/api/apiService";
 import { Header } from "./components/Header";
 import { HeroSection } from "./components/HeroSection";
 import { HowItWorks } from "./components/HowItWorks";
@@ -66,6 +67,12 @@ export default function App() {
       {view === "cabinet" ? (
         <PersonalCabinet
           onBack={() => setView("main")}
+          onLogout={() => {
+            logoutUser();
+            setUserData(null);
+            setView("main");
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
           userData={userData}
           onDataUpdate={() => {
             try {

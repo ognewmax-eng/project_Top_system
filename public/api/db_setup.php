@@ -27,6 +27,11 @@ try {
             phone         VARCHAR(50)  DEFAULT '',
             shift         VARCHAR(5)   DEFAULT '',
             benefits      TEXT,
+            parent_full_name    VARCHAR(255) DEFAULT '',
+            parent_birth_date   VARCHAR(20)  DEFAULT '',
+            parent_phone        VARCHAR(50)  DEFAULT '',
+            parent_address      TEXT,
+            parent_workplace    VARCHAR(500) DEFAULT '',
             auth_token    VARCHAR(64)  DEFAULT NULL,
             created_at    TIMESTAMP    DEFAULT CURRENT_TIMESTAMP
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
@@ -47,6 +52,11 @@ try {
             email            VARCHAR(255) DEFAULT '',
             shift            VARCHAR(5)   DEFAULT '',
             benefits         TEXT,
+            parent_full_name    VARCHAR(255) DEFAULT '',
+            parent_birth_date   VARCHAR(20)  DEFAULT '',
+            parent_phone        VARCHAR(50)  DEFAULT '',
+            parent_address      TEXT,
+            parent_workplace    VARCHAR(500) DEFAULT '',
             attachments      TEXT,
             status           ENUM('review','approved','rejected','revision','reserve') DEFAULT 'review',
             revision_comment TEXT,
@@ -61,10 +71,33 @@ try {
         MODIFY COLUMN status ENUM('review','approved','rejected','revision','reserve') DEFAULT 'review'
     ");
 
+    $migrations = [
+        'ALTER TABLE users ADD COLUMN parent_full_name VARCHAR(255) DEFAULT \'\'',
+        'ALTER TABLE users ADD COLUMN parent_birth_date VARCHAR(20) DEFAULT \'\'',
+        'ALTER TABLE users ADD COLUMN parent_phone VARCHAR(50) DEFAULT \'\'',
+        'ALTER TABLE users ADD COLUMN parent_address TEXT',
+        'ALTER TABLE users ADD COLUMN parent_workplace VARCHAR(500) DEFAULT \'\'',
+        'ALTER TABLE applications ADD COLUMN parent_full_name VARCHAR(255) DEFAULT \'\'',
+        'ALTER TABLE applications ADD COLUMN parent_birth_date VARCHAR(20) DEFAULT \'\'',
+        'ALTER TABLE applications ADD COLUMN parent_phone VARCHAR(50) DEFAULT \'\'',
+        'ALTER TABLE applications ADD COLUMN parent_address TEXT',
+        'ALTER TABLE applications ADD COLUMN parent_workplace VARCHAR(500) DEFAULT \'\'',
+    ];
+    foreach ($migrations as $sql) {
+        try {
+            $pdo->exec($sql);
+        } catch (PDOException $e) {
+            if (strpos($e->getMessage(), 'Duplicate column') === false) {
+                throw $e;
+            }
+        }
+    }
+
     echo '<h2 style="color:green">Таблицы успешно созданы / обновлены!</h2>';
     echo '<p><strong>users</strong> — пользователи (логин/пароль)</p>';
     echo '<p><strong>applications</strong> — заявки участников</p>';
     echo '<p>Колонка <code>status</code> обновлена: добавлен статус <strong>reserve</strong>.</p>';
+    echo '<p>Добавлены поля данных родителя в <strong>users</strong> и <strong>applications</strong> (миграция безопасна при повторном запуске).</p>';
     echo '<p style="color:#888">Этот файл можно удалить после выполнения.</p>';
 } catch (Exception $e) {
     echo '<h2 style="color:red">Ошибка</h2>';

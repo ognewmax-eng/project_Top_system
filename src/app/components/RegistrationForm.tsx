@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import { registerUser, uploadFiles } from "@/api/apiService";
+import type { AttachmentItem } from "@/utils/attachments";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface RegistrationFormProps {
@@ -22,7 +23,7 @@ const benefitCards = [
 const shiftOptions = [
   { id: "1", label: "1 СМЕНА", dates: "1 июня — 19 июня" },
   { id: "2", label: "2 СМЕНА", dates: "6 июля — 23 июля" },
-  { id: "3", label: "3 СМЕНА", dates: "3 августа — 22 августа" },
+  { id: "3", label: "3 СМЕНА", dates: "3 августа — 20 августа" },
 ];
 
 const schoolOptions = [
@@ -36,35 +37,28 @@ const schoolOptions = [
 ];
 
 const documentSlots = [
-  { key: "child_passport", label: "Паспорт ребёнка (при наличии)" },
-  { key: "birth_cert", label: "Свидетельство о рождении ребёнка" },
-  { key: "snils", label: "СНИЛС" },
-  { key: "inn", label: "ИНН" },
-  { key: "study_ref", label: "Справка с места учёбы" },
-  { key: "benefit_proof", label: "Подтверждение льготной категории" },
-  { key: "no_criminal", label: "Справка об отсутствии судимости (либо подтверждение, что справка заказана)" },
-  { key: "draft_card", label: "Приписное удостоверение для юношей" },
-  { key: "commission_application", label: "Заявление в межведомственную комиссию" },
-  { key: "pd_consent", label: "Согласие на обработку персональных данных" },
-  { key: "bank_details", label: "Банковские реквизиты" },
-  { key: "other_docs", label: "Иные документы" },
+  { key: "child_passport", label: "Паспорт ребёнка (при наличии)", required: false },
+  { key: "parent_surname_change", label: "Свидетельство о смене фамилии родителя (при наличии)", required: false },
+  { key: "birth_cert", label: "Свидетельство о рождении ребёнка", required: true },
+  { key: "snils", label: "СНИЛС", required: true },
+  { key: "inn", label: "ИНН", required: true },
+  { key: "study_ref", label: "Справка с места учёбы", required: true },
+  { key: "benefit_proof", label: "Подтверждение льготной категории", required: true },
+  { key: "no_criminal", label: "Справка об отсутствии судимости (либо подтверждение, что справка заказана)", required: true },
+  { key: "draft_card", label: "Приписное удостоверение для юношей 2009 г.р. и старше (при наличии)", required: false },
+  { key: "commission_application", label: "Заявление в межведомственную комиссию", required: true },
+  { key: "pd_consent", label: "Согласие на обработку персональных данных", required: true },
+  { key: "bank_details", label: "Банковские реквизиты", required: true },
+  { key: "other_docs", label: "Иные документы", required: false },
 ] as const;
 
-const requiredDocKeys: DocKey[] = [
-  "child_passport",
-  "birth_cert",
-  "snils",
-  "inn",
-  "study_ref",
-  "benefit_proof",
-  "no_criminal",
-  "draft_card",
-  "commission_application",
-  "pd_consent",
-  "bank_details",
-];
+const requiredDocKeys: DocKey[] = documentSlots.filter((s) => s.required).map((s) => s.key);
 
-type DocKey = typeof documentSlots[number]["key"];
+type DocKey = (typeof documentSlots)[number]["key"];
+
+function docLabelForUi(slot: (typeof documentSlots)[number]): string {
+  return slot.required ? `${slot.label} *` : slot.label;
+}
 
 function formatPhone(raw: string): string {
   const digits = raw.replace(/\D/g, "").slice(0, 11);
@@ -101,16 +95,17 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     parentWorkplace: "",
   });
   const [selectedBenefits, setSelectedBenefits] = useState<string[]>([]);
-  const [documents, setDocuments] = useState<Record<DocKey, File | null>>(() => {
-    const init: Record<string, File | null> = {};
-    for (const s of documentSlots) init[s.key] = null;
-    return init as Record<DocKey, File | null>;
+  const [documents, setDocuments] = useState<Record<DocKey, File[]>>(() => {
+    const init: Record<string, File[]> = {};
+    for (const s of documentSlots) init[s.key] = [];
+    return init as Record<DocKey, File[]>;
   });
   const docInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [agreed, setAgreed] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [submitError, setSubmitError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({ total: 0, completed: 0, currentFile: "" });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -132,8 +127,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
     });
   };
 
-  const setDocFile = useCallback((key: DocKey, file: File | null) => {
-    setDocuments((prev) => ({ ...prev, [key]: file }));
+  const setDocFiles = useCallback((key: DocKey, files: File[]) => {
+    setDocuments((prev) => ({ ...prev, [key]: files }));
   }, []);
 
   const inputStyle: React.CSSProperties = {
@@ -207,6 +202,28 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
           >
             РЕГИСТРАЦИЯ<br />УЧАСТНИКА
           </h2>
+        </div>
+
+        <div
+          style={{
+            marginBottom: 40,
+            padding: mobile ? "20px 16px" : "24px 28px",
+            backgroundColor: "#F0EAD2",
+            border: "1px dashed rgba(0,63,92,0.2)",
+          }}
+        >
+          <div style={{ fontWeight: 900, fontSize: 15, color: "#003F5C", letterSpacing: "0.5px", marginBottom: 10 }}>
+            НУЖНА ПОМОЩЬ?
+          </div>
+          <p style={{ margin: 0, fontSize: 14, color: "#444", lineHeight: 1.6 }}>
+            Свяжитесь с куратором программы по телефону.
+          </p>
+          <a
+            href="tel:+73493837563"
+            style={{ display: "inline-block", marginTop: 12, fontWeight: 900, fontSize: 18, color: "#003F5C", textDecoration: "none" }}
+          >
+            +7 (34938) 3-75-63
+          </a>
         </div>
 
         <div style={{ border: "none", boxShadow: "none" }}>
@@ -401,8 +418,11 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
             <span style={sectionHeaderText("#fff")}>ДОКУМЕНТЫ</span>
           </div>
           <div style={{ padding: mobile ? "20px 16px" : "28px 32px" }}>
-            <p style={{ fontSize: 13, color: "#666", marginBottom: 12, marginTop: 0 }}>
-              Загрузите необходимые документы (PDF, JPG, PNG). Каждый документ загружается отдельно.
+            <p style={{ fontSize: 13, color: "#666", marginBottom: 8, marginTop: 0 }}>
+              Загрузите необходимые документы (PDF, JPG, PNG, DOC, DOCX). В одну строку можно выбрать несколько файлов. Максимальный размер одного файла — 50 МБ.
+            </p>
+            <p style={{ fontSize: 13, color: "#003F5C", fontWeight: 700, marginBottom: 12, marginTop: 0 }}>
+              * — обязательный документ.
             </p>
             <div
               style={{
@@ -429,7 +449,8 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {documentSlots.map((slot, idx) => {
-                const file = documents[slot.key];
+                const slotFiles = documents[slot.key];
+                const hasFiles = slotFiles.length > 0;
                 return (
                   <div
                     key={slot.key}
@@ -440,7 +461,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                       gap: mobile ? 10 : 16,
                       padding: mobile ? "12px" : "12px 16px",
                       border: "none",
-                      backgroundColor: file ? "#f0fdf4" : "#faf8f3",
+                      backgroundColor: hasFiles ? "#f0fdf4" : "#faf8f3",
                       transition: "background 0.15s",
                     }}
                   >
@@ -449,10 +470,12 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                         {idx + 1}.
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <div style={{ fontSize: mobile ? 13 : 14, fontWeight: 700, color: "#003F5C", marginBottom: 2 }}>{slot.label}</div>
-                        {file ? (
-                          <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {file.name}
+                        <div style={{ fontSize: mobile ? 13 : 14, fontWeight: 700, color: "#003F5C", marginBottom: 2 }}>{docLabelForUi(slot)}</div>
+                        {hasFiles ? (
+                          <div style={{ fontSize: 12, color: "#16a34a", fontWeight: 600 }}>
+                            {slotFiles.length === 1
+                              ? slotFiles[0].name
+                              : `Выбрано файлов: ${slotFiles.length}`}
                           </div>
                         ) : (
                           <div style={{ fontSize: 12, color: "#999" }}>не загружен</div>
@@ -466,7 +489,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                         style={{
                           padding: "6px 16px",
                           border: "none",
-                          backgroundColor: file ? "#fff" : "#F0EAD2",
+                          backgroundColor: hasFiles ? "#fff" : "#F0EAD2",
                           fontWeight: 900,
                           fontSize: 12,
                           cursor: "pointer",
@@ -475,12 +498,12 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                           flex: mobile ? 1 : undefined,
                         }}
                       >
-                        {file ? "ЗАМЕНИТЬ" : "ЗАГРУЗИТЬ"}
+                        {hasFiles ? "ДОБАВИТЬ / ЗАМЕНИТЬ" : "ЗАГРУЗИТЬ"}
                       </button>
-                      {file && (
+                      {hasFiles && (
                         <button
                           type="button"
-                          onClick={() => setDocFile(slot.key, null)}
+                          onClick={() => setDocFiles(slot.key, [])}
                           style={{
                             padding: "6px 12px",
                             border: "2px solid #DC2626",
@@ -499,11 +522,12 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                     <input
                       ref={(el) => { docInputRefs.current[slot.key] = el; }}
                       type="file"
-                      accept=".pdf,.jpg,.jpeg,.png"
+                      multiple
+                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                       style={{ display: "none" }}
                       onChange={(e) => {
-                        const f = e.target.files?.[0] ?? null;
-                        setDocFile(slot.key, f);
+                        const list = e.target.files ? Array.from(e.target.files) : [];
+                        setDocFiles(slot.key, list);
                         e.target.value = "";
                       }}
                     />
@@ -556,31 +580,61 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                 if (!form.fullName.trim()) { setSubmitError("Укажите ФИО"); return; }
                 if (!form.shift) { setSubmitError("Выберите смену для участия"); return; }
 
-                const missing = requiredDocKeys.filter((key) => !documents[key]);
+                const missing = requiredDocKeys.filter((key) => (documents[key]?.length ?? 0) === 0);
                 if (missing.length > 0) {
-                  setSubmitError("Пожалуйста, загрузите все обязательные документы (пункты 1–11).");
+                  setSubmitError("Пожалуйста, загрузите все обязательные документы (помечены *).");
                   return;
                 }
 
                 setSubmitting(true);
+                setUploadProgress({ total: 0, completed: 0, currentFile: "" });
                 const payload = { ...form, benefits: JSON.stringify(selectedBenefits) };
                 try {
-                  const filesToUpload = Object.values(documents).filter(Boolean) as File[];
-                  let uploadedPaths: string[] = [];
-                  if (filesToUpload.length > 0) {
-                    const uploadRes = await uploadFiles(filesToUpload, {
+                  const attachmentItems: AttachmentItem[] = [];
+                  const failedUploadNames: string[] = [];
+                  const fullNameForUpload = form.fullName.trim() || "Участник";
+                  const allFilesCount = documentSlots.reduce((acc, s) => acc + documents[s.key].length, 0);
+                  setUploadProgress({ total: allFilesCount, completed: 0, currentFile: "" });
+                  for (const slot of documentSlots) {
+                    const slotFiles = documents[slot.key];
+                    if (!slotFiles || slotFiles.length === 0) continue;
+                    const uploadRes = await uploadFiles(slotFiles, {
                       shift: form.shift,
-                      fullName: form.fullName.trim() || "Участник",
+                      fullName: fullNameForUpload,
+                    }, (event) => {
+                      setUploadProgress({
+                        total: allFilesCount,
+                        completed: event.completed,
+                        currentFile: event.fileName,
+                      });
                     });
-                    if (uploadRes.results) {
-                      uploadedPaths = uploadRes.results.filter((r) => r.saved && r.path).map((r) => r.path!);
-                    }
+                    uploadRes.results?.forEach((r) => {
+                      if (r.saved && r.path) {
+                        attachmentItems.push({
+                          key: slot.key,
+                          label: slot.label,
+                          path: r.path,
+                        });
+                      } else {
+                        failedUploadNames.push(r.originalName);
+                      }
+                    });
                   }
+                  const expectedFiles = documentSlots.reduce((acc, s) => acc + documents[s.key].length, 0);
+                  if (attachmentItems.length !== expectedFiles) {
+                    setSubmitError(
+                      failedUploadNames.length > 0
+                        ? `Не удалось загрузить файлы: ${failedUploadNames.join(", ")}. Проверьте размер (до 50 МБ), сеть и попробуйте снова.`
+                        : "Не удалось загрузить один или несколько файлов (Яндекс.Диск или сервер). Проверьте размер файлов и соединение и попробуйте снова."
+                    );
+                    return;
+                  }
+                  const attachmentsJson = JSON.stringify(attachmentItems);
                   const res = await registerUser({
                     ...payload,
-                    attachments: JSON.stringify(uploadedPaths),
+                    attachments: attachmentsJson,
                   });
-                  const userData: Record<string, string> = { ...payload, attachments: JSON.stringify(uploadedPaths) };
+                  const userData: Record<string, string> = { ...payload, attachments: attachmentsJson };
                   if (res.user) {
                     Object.entries(res.user).forEach(([k, v]) => {
                       if (v !== null && v !== undefined) userData[k] = String(v);
@@ -592,6 +646,7 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
                   setSubmitError(message);
                 } finally {
                   setSubmitting(false);
+                  setUploadProgress((prev) => ({ ...prev, currentFile: "" }));
                 }
               }}
               disabled={!agreed || submitting}
@@ -615,6 +670,29 @@ export function RegistrationForm({ onSuccess }: RegistrationFormProps) {
             >
               {submitting ? "ОТПРАВКА…" : "ОТПРАВИТЬ ЗАЯВКУ"}
             </button>
+            {submitting && uploadProgress.total > 0 && (
+              <div style={{ marginTop: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#555", marginBottom: 6 }}>
+                  <span>Загрузка файлов: {uploadProgress.completed}/{uploadProgress.total}</span>
+                  <span>{Math.round((uploadProgress.completed / uploadProgress.total) * 100)}%</span>
+                </div>
+                <div style={{ width: "100%", height: 8, backgroundColor: "#e5e7eb", overflow: "hidden" }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${Math.min(100, Math.round((uploadProgress.completed / uploadProgress.total) * 100))}%`,
+                      backgroundColor: "#879E82",
+                      transition: "width 0.2s ease",
+                    }}
+                  />
+                </div>
+                {uploadProgress.currentFile && (
+                  <div style={{ marginTop: 6, fontSize: 12, color: "#666", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    Сейчас: {uploadProgress.currentFile}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
         </div>

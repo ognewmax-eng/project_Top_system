@@ -8,7 +8,7 @@ const SHIFTS = [
     id: 1,
     label: "1 СМЕНА",
     dates: "1 июня — 19 июня",
-    totalSpots: 120,
+    totalSpots: 150,
     color: "#F0EAD2",
     accent: "#879E82",
   },
@@ -16,21 +16,21 @@ const SHIFTS = [
     id: 2,
     label: "2 СМЕНА",
     dates: "6 июля — 23 июля",
-    totalSpots: 98,
+    totalSpots: 95,
     color: "#879E82",
     accent: "#003F5C",
   },
   {
     id: 3,
     label: "3 СМЕНА",
-    dates: "3 августа — 22 августа",
-    totalSpots: 150,
+    dates: "3 августа — 20 августа",
+    totalSpots: 123,
     color: "#003F5C",
     accent: "#F0EAD2",
   },
 ];
 
-const TOTAL_SPOTS_ALL = 368;
+const TOTAL_SPOTS_ALL = 150 + 95 + 123;
 
 const emptyByShift: Record<string, ShiftStats> = {
   "1": { submitted: 0, approved: 0 },

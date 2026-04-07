@@ -1,20 +1,28 @@
 import React, { useMemo, useState, useRef, useEffect } from "react";
 import { uploadFiles, getFileUrl, getMyApplication, submitRevision } from "@/api/apiService";
 import type { ApplicationData } from "@/api/apiService";
+import { parseAttachmentsJson, type AttachmentItem } from "@/utils/attachments";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 interface PersonalCabinetProps {
   onBack: () => void;
+  onLogout: () => void;
   userData: Record<string, string> | null;
   onDataUpdate?: () => void;
 }
+
+const shiftDetailLabels: Record<string, string> = {
+  "1": "1 июня — 19 июня",
+  "2": "6 июля — 23 июля",
+  "3": "3 августа — 20 августа",
+};
 
 const statusConfig: Record<string, { label: string; color: string; textColor: string; desc: string }> = {
   review: {
     label: "НА ПРОВЕРКЕ",
     color: "#879E82",
     textColor: "#003F5C",
-    desc: "Ваша заявка получена и находится на рассмотрении. Ожидайте ответа в течение 3 рабочих дней.",
+    desc: "Ваша заявка получена и находится на рассмотрении. Ожидайте ответа в течение 10 рабочих дней.",
   },
   revision: {
     label: "НА ДОРАБОТКЕ",
@@ -71,7 +79,7 @@ function formatCreatedAt(createdAt: string | undefined): string {
   return Number.isNaN(fallback.getTime()) ? createdAt : fallback.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabinetProps) {
+export function PersonalCabinet({ onBack, onLogout, userData, onDataUpdate }: PersonalCabinetProps) {
   const mobile = useIsMobile();
   const [application, setApplication] = useState<ApplicationData | null>(null);
   const [appLoading, setAppLoading] = useState(true);
@@ -102,8 +110,35 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
   const [revisionSuccess, setRevisionSuccess] = useState(false);
   const revisionFileInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    if (!application) return;
+    setEditForm({
+      fullName: application.fullName || "",
+      birthDate: application.birthDate || "",
+      passportSeries: application.passportSeries || "",
+      passportNumber: application.passportNumber || "",
+      address: application.address || "",
+      school: application.school || "",
+      grade: application.grade || "",
+      shift: application.shift || "",
+      phone: application.phone || "",
+      email: application.email || "",
+      parentFullName: application.parentFullName ?? "",
+      parentBirthDate: application.parentBirthDate ?? "",
+      parentPhone: application.parentPhone ?? "",
+      parentAddress: application.parentAddress ?? "",
+      parentWorkplace: application.parentWorkplace ?? "",
+      benefits: JSON.stringify(application.benefits || []),
+      attachments: application.attachments || "[]",
+    });
+  }, [application]);
+
   const name = userData?.fullName || application?.fullName || "—";
   const registrationDate = formatCreatedAt(application?.createdAt);
+  const shiftNum = application?.shift || userData?.shift || "";
+  const shiftLine = shiftNum
+    ? `Смена № ${shiftNum}${shiftDetailLabels[shiftNum] ? ` (${shiftDetailLabels[shiftNum]})` : ""}`
+    : "—";
 
   const timelineSteps = useMemo(() => {
     const decided = ["revision", "approved", "rejected", "reserve"].includes(currentStatus);
@@ -134,12 +169,24 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
     <div style={{ backgroundColor: "#fff", minHeight: "100vh", fontFamily: "'Inter', sans-serif" }}>
       <div style={{ backgroundColor: "#F0EAD2", borderBottom: "none", padding: mobile ? "20px 16px" : "32px 24px" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-          <button
-            onClick={onBack}
-            style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", border: "none", backgroundColor: "transparent", color: "#003F5C", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", marginBottom: mobile ? 16 : 24, fontFamily: "'Inter', sans-serif" }}
-          >
-            ← НАЗАД НА ГЛАВНУЮ
-          </button>
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, marginBottom: mobile ? 16 : 24 }}>
+            <button
+              onClick={onBack}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 16px", border: "none", backgroundColor: "transparent", color: "#003F5C", fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif" }}
+            >
+              ← НАЗАД НА ГЛАВНУЮ
+            </button>
+            <button
+              type="button"
+              onClick={onLogout}
+              style={{
+                padding: "8px 16px", border: "2px solid #003F5C", backgroundColor: "#fff", color: "#003F5C",
+                fontWeight: 900, fontSize: 13, cursor: "pointer", letterSpacing: "0.5px", fontFamily: "'Inter', sans-serif",
+              }}
+            >
+              ВЫЙТИ
+            </button>
+          </div>
           <div style={{ display: "flex", alignItems: mobile ? "flex-start" : "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16, flexDirection: mobile ? "column" : "row" }}>
             <div>
               <div style={{ color: "rgba(0,63,92,0.5)", fontSize: 13, fontWeight: 700, marginBottom: 4 }}>ЛИЧНЫЙ КАБИНЕТ</div>
@@ -213,10 +260,18 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                     { label: "ДАТА РОЖДЕНИЯ", value: (application?.birthDate || userData?.birthDate) ? new Date(application?.birthDate || userData?.birthDate || "").toLocaleDateString("ru-RU") : "—" },
                     { label: "ПАСПОРТ", value: `${application?.passportSeries || userData?.passportSeries || ""} ${application?.passportNumber || userData?.passportNumber || ""}`.trim() || "—" },
                     { label: "ТЕЛЕФОН", value: application?.phone || userData?.phone || "—" },
+                    { label: "EMAIL", value: application?.email || userData?.email || "—" },
+                    { label: "АДРЕС", value: application?.address || userData?.address || "—", wide: true },
                     { label: "ШКОЛА", value: application?.school || userData?.school || "—" },
                     { label: "КЛАСС", value: (application?.grade || userData?.grade) ? `${application?.grade || userData?.grade} класс` : "—" },
+                    { label: "СМЕНА", value: shiftLine, wide: true },
+                    { label: "ФИО РОДИТЕЛЯ", value: application?.parentFullName || userData?.parentFullName || "—" },
+                    { label: "Д.Р. РОДИТЕЛЯ", value: (application?.parentBirthDate || userData?.parentBirthDate) ? new Date(application?.parentBirthDate || userData?.parentBirthDate || "").toLocaleDateString("ru-RU") : "—" },
+                    { label: "ТЕЛ. РОДИТЕЛЯ", value: application?.parentPhone || userData?.parentPhone || "—" },
+                    { label: "АДРЕС РОДИТЕЛЯ", value: application?.parentAddress || userData?.parentAddress || "—", wide: true },
+                    { label: "МЕСТО РАБОТЫ РОДИТЕЛЯ", value: application?.parentWorkplace || userData?.parentWorkplace || "—", wide: true },
                   ].map((field) => (
-                    <div key={field.label}>
+                    <div key={field.label} style={{ gridColumn: !mobile && (field as { wide?: boolean }).wide ? "1 / -1" : undefined }}>
                       <div style={{ fontSize: 11, fontWeight: 900, color: "#666", letterSpacing: "0.5px", marginBottom: 4 }}>{field.label}</div>
                       <div style={{ fontSize: 15, fontWeight: 700, color: "#003F5C" }}>{field.value}</div>
                     </div>
@@ -246,8 +301,13 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                       { key: "shift", label: "Смена", type: "select", options: [{ v: "1", l: "1 смена" }, { v: "2", l: "2 смена" }, { v: "3", l: "3 смена" }] },
                       { key: "phone", label: "Телефон", type: "tel", placeholder: "+7 (___) ___-__-__" },
                       { key: "email", label: "Email", type: "email", placeholder: "example@mail.ru" },
+                      { key: "parentFullName", label: "ФИО родителя", type: "text", placeholder: "" },
+                      { key: "parentBirthDate", label: "Дата рождения родителя", type: "date" },
+                      { key: "parentPhone", label: "Телефон родителя", type: "tel", placeholder: "" },
+                      { key: "parentAddress", label: "Адрес родителя", type: "text", placeholder: "" },
+                      { key: "parentWorkplace", label: "Место работы родителя", type: "text", placeholder: "" },
                     ].map((f) => (
-                      <div key={f.key} style={{ gridColumn: !mobile && f.key === "address" ? "1 / -1" : undefined }}>
+                      <div key={f.key} style={{ gridColumn: !mobile && (f.key === "address" || f.key === "parentAddress" || f.key === "parentWorkplace") ? "1 / -1" : undefined }}>
                         <label style={{ display: "block", fontSize: 11, fontWeight: 900, color: "#666", marginBottom: 4 }}>{f.label}</label>
                         {f.type === "select" ? (
                           <select
@@ -260,6 +320,13 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                               ? (f.options as { v: string; l: string }[]).map((opt) => <option key={opt.v} value={opt.v}>{opt.l}</option>)
                               : (f.options as string[] || []).map((opt) => <option key={opt} value={opt}>{opt} класс</option>)}
                           </select>
+                        ) : f.key === "birthDate" || f.key === "parentBirthDate" ? (
+                          <input
+                            type="date"
+                            value={editForm[f.key] || ""}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, [f.key]: e.target.value }))}
+                            style={{ width: "100%", padding: "10px 12px", border: "none", borderBottom: "1.5px solid rgba(135,158,130,0.4)", fontSize: 14, fontFamily: "'Inter', sans-serif", boxSizing: "border-box" }}
+                          />
                         ) : (
                           <input
                             type={f.type as "text"}
@@ -298,25 +365,20 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                       setRevisionError("");
                       setRevisionSubmitting(true);
                       try {
-                        let existingPaths: string[] = [];
-                        try {
-                          const att = editForm.attachments || application?.attachments || "[]";
-                          const parsed = JSON.parse(att);
-                          if (Array.isArray(parsed)) existingPaths = parsed;
-                        } catch { /* ignore */ }
-                        let newPaths: string[] = [];
+                        const existingItems = parseAttachmentsJson(editForm.attachments || application?.attachments || "[]");
+                        const newItems: AttachmentItem[] = [];
                         if (revisionFiles.length > 0) {
-                          try {
-                            const res = await uploadFiles(revisionFiles, {
-                              shift: editForm.shift || application?.shift || "1",
-                              fullName: (editForm.fullName || application?.fullName || "").trim() || "Участник",
-                            });
-                            if (res.results) newPaths = res.results.filter((r) => r.saved && r.path).map((r) => r.path!);
-                          } catch {
-                            newPaths = [];
-                          }
+                          const res = await uploadFiles(revisionFiles, {
+                            shift: editForm.shift || application?.shift || "1",
+                            fullName: (editForm.fullName || application?.fullName || "").trim() || "Участник",
+                          });
+                          res.results?.forEach((r) => {
+                            if (r.saved && r.path) {
+                              newItems.push({ key: "revision", label: "Дополнительный файл", path: r.path });
+                            }
+                          });
                         }
-                        const allPaths = [...existingPaths, ...newPaths];
+                        const merged = [...existingItems, ...newItems];
                         await submitRevision({
                           fullName: editForm.fullName || "",
                           birthDate: editForm.birthDate || "",
@@ -329,7 +391,12 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
                           email: editForm.email || "",
                           shift: editForm.shift || "",
                           benefits: editForm.benefits || userData?.benefits || "[]",
-                          attachments: JSON.stringify(allPaths),
+                          parentFullName: editForm.parentFullName || "",
+                          parentBirthDate: editForm.parentBirthDate || "",
+                          parentPhone: editForm.parentPhone || "",
+                          parentAddress: editForm.parentAddress || "",
+                          parentWorkplace: editForm.parentWorkplace || "",
+                          attachments: JSON.stringify(merged),
                         });
                         setRevisionFiles([]);
                         setRevisionSuccess(true);
@@ -393,27 +460,25 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               </div>
               <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
                 {(() => {
-                  let paths: string[] = [];
-                  try {
-                    const att = application?.attachments || userData?.attachments || "[]";
-                    const parsed = JSON.parse(att);
-                    if (Array.isArray(parsed)) paths = parsed;
-                  } catch { paths = []; }
-                  if (paths.length === 0) {
+                  const items = parseAttachmentsJson(application?.attachments || userData?.attachments || "[]");
+                  if (items.length === 0) {
                     return <div style={{ fontSize: 13, color: "#666", fontStyle: "italic" }}>Нет загруженных документов</div>;
                   }
-                  return paths.map((path, i) => {
-                    const nameStr = path.split("/").pop() || path;
-                    const href = getFileUrl(path);
+                  return items.map((item, i) => {
+                    const nameStr = item.path.split("/").pop() || item.path;
+                    const href = getFileUrl(item.path);
                     return (
-                      <a key={i} href={href} target="_blank" rel="noopener noreferrer"
-                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", border: "none", fontSize: 12, fontWeight: 700, color: "#003F5C", textDecoration: "none", backgroundColor: "#fff", transition: "background 0.15s" }}
+                      <a key={`${item.path}-${i}`} href={href} target="_blank" rel="noopener noreferrer"
+                        style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", border: "none", fontSize: 12, fontWeight: 700, color: "#003F5C", textDecoration: "none", backgroundColor: "#fff", transition: "background 0.15s" }}
                         onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = "#F0EAD2"; }}
                         onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = "#fff"; }}
                       >
                         <span>📄</span>
-                        <span style={{ wordBreak: "break-all" }}>{nameStr}</span>
-                        <span style={{ marginLeft: "auto", fontSize: 11, color: "#666" }}>открыть</span>
+                        <span style={{ flex: 1, minWidth: 0 }}>
+                          <span style={{ fontSize: 10, fontWeight: 900, color: "#888", display: "block", marginBottom: 2 }}>{item.label}</span>
+                          <span style={{ wordBreak: "break-all" }}>{nameStr}</span>
+                        </span>
+                        <span style={{ marginLeft: "auto", fontSize: 11, color: "#666", flexShrink: 0 }}>открыть</span>
                       </a>
                     );
                   });
@@ -425,8 +490,8 @@ export function PersonalCabinet({ onBack, userData, onDataUpdate }: PersonalCabi
               <div style={{ fontWeight: 900, fontSize: 14, marginBottom: 12 }}>НУЖНА ПОМОЩЬ?</div>
               <p style={{ fontSize: 13, color: "#555", lineHeight: 1.5, marginBottom: 16 }}>Свяжитесь с куратором программы по телефону или email.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                <a href="tel:83493837523" style={{ display: "block", padding: "10px 16px", border: "none", backgroundColor: "#fff", fontWeight: 900, fontSize: 13, color: "#003F5C", textDecoration: "none", textAlign: "center", boxShadow: "none" }}>
-                  8 (3493) 83-75-23
+                <a href="tel:+73493837563" style={{ display: "block", padding: "10px 16px", border: "none", backgroundColor: "#fff", fontWeight: 900, fontSize: 13, color: "#003F5C", textDecoration: "none", textAlign: "center", boxShadow: "none" }}>
+                  +7 (34938) 3-75-63
                 </a>
                 <a href="mailto:help@trudovoelete.ru" style={{ display: "block", padding: "10px 16px", border: "none", backgroundColor: "#F0EAD2", fontWeight: 900, fontSize: 12, color: "#003F5C", textDecoration: "none", textAlign: "center", letterSpacing: "0.3px" }}>
                   НАПИСАТЬ КУРАТОРУ

@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 }
 
 // Настройки
-const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 МБ на файл
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 МБ на файл (согласовано с api/.user.ini)
 const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'gif', 'doc', 'docx'];
 // MIME-типы для дополнительной проверки (расширение проверяется в первую очередь)
 const ALLOWED_MIMES = [
@@ -88,10 +88,10 @@ if (isset($_FILES['files']) && !empty($_FILES['files']['name']) && (is_array($_F
             $hasError = true;
             continue;
         }
-        $targetName = safeFilename($name);
+        $targetName = uniqid('f_', true) . '_' . safeFilename($name);
         $targetPath = $uploadDir . '/' . $targetName;
         if (file_exists($targetPath)) {
-            $targetName = pathinfo($targetName, PATHINFO_FILENAME) . '_' . time() . '.' . pathinfo($targetName, PATHINFO_EXTENSION);
+            $targetName = uniqid('f_', true) . '_' . safeFilename($name);
             $targetPath = $uploadDir . '/' . $targetName;
         }
         if (move_uploaded_file($tmp, $targetPath)) {
@@ -133,10 +133,10 @@ if ($file['size'] > MAX_FILE_SIZE) {
     exit;
 }
 
-$targetName = safeFilename($file['name']);
+$targetName = uniqid('f_', true) . '_' . safeFilename($file['name']);
 $targetPath = $uploadDir . '/' . $targetName;
 if (file_exists($targetPath)) {
-    $targetName = pathinfo($targetName, PATHINFO_FILENAME) . '_' . time() . '.' . pathinfo($targetName, PATHINFO_EXTENSION);
+    $targetName = uniqid('f_', true) . '_' . safeFilename($file['name']);
     $targetPath = $uploadDir . '/' . $targetName;
 }
 

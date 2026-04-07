@@ -18,8 +18,14 @@ export interface SaveApplicationPayload {
   email?: string;
   password: string;
   benefits?: string;
+  /** JSON-массив объектов { key, label, path } */
   attachments?: string;
   shift?: string;
+  parentFullName?: string;
+  parentBirthDate?: string;
+  parentPhone?: string;
+  parentAddress?: string;
+  parentWorkplace?: string;
   [key: string]: string | undefined;
 }
 
@@ -43,12 +49,23 @@ export interface UploadToYandexOptions {
   fullName: string;
 }
 
+export interface UploadProgressEvent {
+  total: number;
+  completed: number;
+  fileName: string;
+  saved: boolean;
+  error?: string;
+}
+
 export interface AuthResponse {
   success: boolean;
   token?: string;
   user?: UserData;
   applicationId?: number;
   error?: string;
+  /** При повторной регистрации — номер смены из существующей заявки */
+  existingShift?: string | null;
+  code?: "already_registered" | "already_registered_identity";
 }
 
 export interface UserData {
@@ -64,6 +81,12 @@ export interface UserData {
   phone?: string;
   shift?: string;
   benefits?: string;
+  parentFullName?: string;
+  parentBirthDate?: string;
+  parentPhone?: string;
+  parentAddress?: string;
+  parentWorkplace?: string;
+  attachments?: string;
 }
 
 export interface ApplicationData {
@@ -81,6 +104,11 @@ export interface ApplicationData {
   email: string;
   shift: string;
   benefits: string[];
+  parentFullName?: string;
+  parentBirthDate?: string;
+  parentPhone?: string;
+  parentAddress?: string;
+  parentWorkplace?: string;
   attachments: string;
   status: 'review' | 'approved' | 'rejected' | 'revision' | 'reserve';
   revisionComment: string;
@@ -179,6 +207,34 @@ export async function loginUser(email: string, password: string): Promise<AuthRe
 export function logoutUser(): void {
   localStorage.removeItem('top_auth_token');
   localStorage.removeItem('top_user');
+}
+
+/**
+ * Установить пароль пользователю (админка). Старые сессии пользователя сбрасываются.
+ */
+export async function adminSetUserPassword(
+  adminPassword: string,
+  userId: number,
+  newPassword: string
+): Promise<void> {
+  const url = `${API_BASE}/admin_set_user_password.php`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      admin_password: adminPassword,
+      user_id: userId,
+      new_password: newPassword,
+    }),
+  });
+  const text = await res.text();
+  if (isNonJsonResponse(text)) {
+    throw new Error('Сервер не выполняет PHP или недоступен admin_set_user_password.php');
+  }
+  const json = JSON.parse(text) as { success: boolean; error?: string };
+  if (!json.success) {
+    throw new Error(json.error || 'Не удалось установить пароль');
+  }
 }
 
 /* ─── Заявки ─── */
@@ -319,33 +375,104 @@ export async function uploadFile(file: File): Promise<UploadResponse> {
 
 export async function uploadFiles(
   files: File[],
-  options?: UploadToYandexOptions
+  options?: UploadToYandexOptions,
+  onProgress?: (event: UploadProgressEvent) => void
 ): Promise<UploadResponse> {
   if (files.length === 0) return { success: true, results: [] };
   const useYandex = options && options.shift && options.fullName.trim().length > 0;
   const url = useYandex ? `${API_BASE}/upload_to_yandex.php` : `${API_BASE}/upload.php`;
 
   const allResults: Array<{ originalName: string; saved: boolean; path?: string; error?: string }> = [];
+  const MAX_ATTEMPTS = 3;
+  const RETRY_DELAY_MS = 700;
+  let completedUploads = 0;
 
   for (const f of files) {
-    const form = new FormData();
-    form.append('files[]', f);
-    if (useYandex) {
-      form.append('shift', options!.shift);
-      form.append('fullName', options!.fullName.trim());
+    let uploaded = false;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      const form = new FormData();
+      form.append('files[]', f);
+      if (useYandex) {
+        form.append('shift', options!.shift);
+        form.append('fullName', options!.fullName.trim());
+      }
+      try {
+        const res = await fetch(url, { method: 'POST', body: form });
+        const text = await res.text();
+        if (isNonJsonResponse(text)) {
+          if (attempt < MAX_ATTEMPTS) {
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+            continue;
+          }
+          allResults.push({ originalName: f.name, saved: false, error: 'Сервер вернул не-JSON ответ' });
+          break;
+        }
+        const json = JSON.parse(text) as UploadResponse;
+        if (!res.ok) {
+          const errText = json.error || 'Ошибка загрузки';
+          if (res.status >= 500 && attempt < MAX_ATTEMPTS) {
+            await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+            continue;
+          }
+          allResults.push({ originalName: f.name, saved: false, error: errText });
+          break;
+        }
+        if (json.results && json.results.length > 0) {
+          allResults.push(...json.results);
+          const latest = json.results[json.results.length - 1];
+          if (latest.saved) completedUploads += 1;
+          onProgress?.({
+            total: files.length,
+            completed: completedUploads,
+            fileName: latest.originalName || f.name,
+            saved: Boolean(latest.saved),
+            error: latest.error,
+          });
+          uploaded = true;
+          break;
+        }
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+          continue;
+        }
+        allResults.push({ originalName: f.name, saved: false, error: 'Пустой ответ загрузки' });
+        onProgress?.({
+          total: files.length,
+          completed: allResults.length,
+          fileName: f.name,
+          saved: false,
+          error: 'Пустой ответ загрузки',
+        });
+        break;
+      } catch (e) {
+        if (attempt < MAX_ATTEMPTS) {
+          await new Promise((resolve) => setTimeout(resolve, RETRY_DELAY_MS * attempt));
+          continue;
+        }
+        allResults.push({
+          originalName: f.name,
+          saved: false,
+          error: e instanceof Error ? e.message : 'Сетевая ошибка',
+        });
+        onProgress?.({
+          total: files.length,
+          completed: allResults.length,
+          fileName: f.name,
+          saved: false,
+          error: e instanceof Error ? e.message : 'Сетевая ошибка',
+        });
+      }
     }
-    const res = await fetch(url, { method: 'POST', body: form });
-    const text = await res.text();
-    if (isNonJsonResponse(text)) {
-      allResults.push({ originalName: f.name, saved: false });
-      continue;
+    if (!uploaded && !allResults.some((r) => r.originalName === f.name)) {
+      allResults.push({ originalName: f.name, saved: false, error: 'Файл не загружен' });
+      onProgress?.({
+        total: files.length,
+        completed: allResults.length,
+        fileName: f.name,
+        saved: false,
+        error: 'Файл не загружен',
+      });
     }
-    const json = JSON.parse(text) as UploadResponse;
-    if (!res.ok) {
-      allResults.push({ originalName: f.name, saved: false, error: json.error || 'Ошибка загрузки' });
-      continue;
-    }
-    if (json.results) allResults.push(...json.results);
   }
 
   return { success: allResults.every((r) => r.saved), results: allResults };

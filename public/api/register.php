@@ -8,6 +8,17 @@
 require_once __DIR__ . '/db_config.php';
 handleCors();
 
+/** Нормализация ФИО ребёнка для сравнения: пробелы, регистр */
+function normalizeChildFullName(string $name): string {
+    $s = trim(preg_replace('/\s+/u', ' ', $name));
+    if ($s === '') {
+        return '';
+    }
+    return function_exists('mb_strtolower')
+        ? mb_strtolower($s, 'UTF-8')
+        : strtolower($s);
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(['success' => false, 'error' => 'Метод не разрешён'], 405);
 }
@@ -28,10 +39,46 @@ if ($email === '' || $password === '') {
 try {
     $pdo = getDbConnection();
 
-    $existing = $pdo->prepare('SELECT id FROM users WHERE email = :email LIMIT 1');
+    $existing = $pdo->prepare('SELECT shift FROM users WHERE email = :email LIMIT 1');
     $existing->execute(['email' => $email]);
-    if ($existing->fetch()) {
-        jsonResponse(['success' => false, 'error' => 'Пользователь с таким email уже существует'], 409);
+    $existingRow = $existing->fetch(PDO::FETCH_ASSOC);
+    if ($existingRow) {
+        $shiftVal = trim((string) ($existingRow['shift'] ?? ''));
+        if ($shiftVal !== '') {
+            $msg = 'Вы уже зарегистрированы в системе на смену № ' . $shiftVal . '.';
+        } else {
+            $msg = 'Вы уже зарегистрированы в системе. Войдите в личный кабинет, используя email и пароль, указанные при регистрации.';
+        }
+        jsonResponse([
+            'success'        => false,
+            'error'          => $msg,
+            'existingShift'  => $shiftVal !== '' ? $shiftVal : null,
+            'code'           => 'already_registered',
+        ], 409);
+    }
+
+    $incomingBirthDate = trim((string) ($data['birthDate'] ?? ''));
+    $normName = normalizeChildFullName(trim((string) ($data['fullName'] ?? '')));
+    if ($normName !== '' && $incomingBirthDate !== '') {
+        $byIdentity = $pdo->prepare('SELECT shift, full_name FROM users WHERE birth_date = :bd');
+        $byIdentity->execute(['bd' => $incomingBirthDate]);
+        while ($row = $byIdentity->fetch(PDO::FETCH_ASSOC)) {
+            if (normalizeChildFullName((string) ($row['full_name'] ?? '')) !== $normName) {
+                continue;
+            }
+            $shiftVal = trim((string) ($row['shift'] ?? ''));
+            if ($shiftVal !== '') {
+                $msg = 'Ребёнок с такими ФИО и датой рождения уже зарегистрирован в системе на смену № ' . $shiftVal . '.';
+            } else {
+                $msg = 'Ребёнок с такими ФИО и датой рождения уже зарегистрирован в системе. Для входа используйте email, указанный при первой регистрации.';
+            }
+            jsonResponse([
+                'success'       => false,
+                'error'         => $msg,
+                'existingShift' => $shiftVal !== '' ? $shiftVal : null,
+                'code'          => 'already_registered_identity',
+            ], 409);
+        }
     }
 
     $token = bin2hex(random_bytes(32));
@@ -40,8 +87,10 @@ try {
     $benefitsRaw = $data['benefits'] ?? '[]';
 
     $stmt = $pdo->prepare('
-        INSERT INTO users (email, password_hash, full_name, birth_date, passport_series, passport_number, address, school, grade, phone, shift, benefits, auth_token)
-        VALUES (:email, :password_hash, :full_name, :birth_date, :passport_series, :passport_number, :address, :school, :grade, :phone, :shift, :benefits, :auth_token)
+        INSERT INTO users (email, password_hash, full_name, birth_date, passport_series, passport_number, address, school, grade, phone, shift, benefits,
+            parent_full_name, parent_birth_date, parent_phone, parent_address, parent_workplace, auth_token)
+        VALUES (:email, :password_hash, :full_name, :birth_date, :passport_series, :passport_number, :address, :school, :grade, :phone, :shift, :benefits,
+            :parent_full_name, :parent_birth_date, :parent_phone, :parent_address, :parent_workplace, :auth_token)
     ');
     $stmt->execute([
         'email'           => $email,
@@ -56,6 +105,11 @@ try {
         'phone'           => $data['phone'] ?? '',
         'shift'           => $data['shift'] ?? '',
         'benefits'        => $benefitsRaw,
+        'parent_full_name'    => trim($data['parentFullName'] ?? ''),
+        'parent_birth_date'   => $data['parentBirthDate'] ?? '',
+        'parent_phone'        => $data['parentPhone'] ?? '',
+        'parent_address'      => $data['parentAddress'] ?? '',
+        'parent_workplace'    => trim($data['parentWorkplace'] ?? ''),
         'auth_token'      => $token,
     ]);
     $userId = (int) $pdo->lastInsertId();
@@ -63,8 +117,10 @@ try {
     $attachments = $data['attachments'] ?? '[]';
 
     $appStmt = $pdo->prepare('
-        INSERT INTO applications (user_id, full_name, birth_date, passport_series, passport_number, address, school, grade, phone, email, shift, benefits, attachments, status)
-        VALUES (:user_id, :full_name, :birth_date, :passport_series, :passport_number, :address, :school, :grade, :phone, :email, :shift, :benefits, :attachments, :status)
+        INSERT INTO applications (user_id, full_name, birth_date, passport_series, passport_number, address, school, grade, phone, email, shift, benefits,
+            parent_full_name, parent_birth_date, parent_phone, parent_address, parent_workplace, attachments, status)
+        VALUES (:user_id, :full_name, :birth_date, :passport_series, :passport_number, :address, :school, :grade, :phone, :email, :shift, :benefits,
+            :parent_full_name, :parent_birth_date, :parent_phone, :parent_address, :parent_workplace, :attachments, :status)
     ');
     $appStmt->execute([
         'user_id'         => $userId,
@@ -79,6 +135,11 @@ try {
         'email'           => $email,
         'shift'           => $data['shift'] ?? '',
         'benefits'        => $benefitsRaw,
+        'parent_full_name'    => trim($data['parentFullName'] ?? ''),
+        'parent_birth_date'   => $data['parentBirthDate'] ?? '',
+        'parent_phone'        => $data['parentPhone'] ?? '',
+        'parent_address'      => $data['parentAddress'] ?? '',
+        'parent_workplace'    => trim($data['parentWorkplace'] ?? ''),
         'attachments'     => $attachments,
         'status'          => 'review',
     ]);
@@ -101,6 +162,12 @@ try {
             'phone'           => $data['phone'] ?? '',
             'shift'           => $data['shift'] ?? '',
             'benefits'        => $benefitsRaw,
+            'parentFullName'    => trim($data['parentFullName'] ?? ''),
+            'parentBirthDate'   => $data['parentBirthDate'] ?? '',
+            'parentPhone'       => $data['parentPhone'] ?? '',
+            'parentAddress'     => $data['parentAddress'] ?? '',
+            'parentWorkplace'   => trim($data['parentWorkplace'] ?? ''),
+            'attachments'       => $attachments,
         ],
     ]);
 } catch (PDOException $e) {
